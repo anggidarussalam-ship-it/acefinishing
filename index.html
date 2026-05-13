@@ -1,0 +1,1482 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Finishing Production Monitoring Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #050d1a;
+    --bg-secondary: #080f1f;
+    --bg-card: rgba(10, 20, 40, 0.85);
+    --bg-glass: rgba(15, 30, 60, 0.6);
+    --border: rgba(0, 200, 255, 0.12);
+    --border-bright: rgba(0, 200, 255, 0.35);
+    --cyan: #00d4ff;
+    --cyan-dim: rgba(0,212,255,0.15);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.15);
+    --green: #00ff88;
+    --green-dim: rgba(0,255,136,0.12);
+    --orange: #ff9f43;
+    --red: #ff4d6d;
+    --purple: #a855f7;
+    --text-primary: #e8f4ff;
+    --text-secondary: #7a9bc4;
+    --text-dim: #3d5a7a;
+    --shadow-glow: 0 0 30px rgba(0,212,255,0.08);
+    --radius: 14px;
+    --font: 'Plus Jakarta Sans', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0,80,160,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 90%, rgba(0,180,255,0.06) 0%, transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.25); border-radius:3px; }
+
+  /* ─── HEADER ─── */
+  .header {
+    position: sticky; top:0; z-index:1000;
+    background: rgba(5,13,26,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 64px;
+    display: flex; align-items:center; gap:16px;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.4), 0 1px 0 rgba(0,212,255,0.1);
+  }
+  .logo-badge {
+    width:38px; height:38px; border-radius:10px;
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800; color:#000; flex-shrink:0;
+    box-shadow: 0 0 16px rgba(0,212,255,0.4);
+  }
+  .header-title { flex:1; min-width:0; }
+  .header-title h1 { font-size:13px; font-weight:700; letter-spacing:0.08em; color:var(--cyan); line-height:1.2; }
+  .header-title p { font-size:10px; color:var(--text-secondary); letter-spacing:0.04em; }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .clock-block { text-align:right; }
+  .clock-time { font-family:var(--mono); font-size:18px; font-weight:500; color:var(--cyan); line-height:1; }
+  .clock-date { font-size:10px; color:var(--text-secondary); letter-spacing:0.04em; }
+  .status-dot {
+    width:8px; height:8px; border-radius:50%; background:var(--green);
+    box-shadow: 0 0 8px var(--green); animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ─── NAV ─── */
+  .nav-bar {
+    display:flex; gap:2px; padding:8px 20px;
+    background: rgba(8,15,31,0.95);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(10px);
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .nav-btn {
+    display:flex; align-items:center; gap:7px;
+    padding:7px 14px; border-radius:8px; border:none; cursor:pointer;
+    font-family:var(--font); font-size:12px; font-weight:600;
+    color:var(--text-secondary); background:transparent;
+    transition:all .2s; white-space:nowrap; letter-spacing:0.02em;
+  }
+  .nav-btn:hover { color:var(--text-primary); background:rgba(255,255,255,0.05); }
+  .nav-btn.active { color:var(--cyan); background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.2); }
+  .nav-btn svg { width:14px; height:14px; }
+
+  /* ─── FILTERS ─── */
+  .filter-bar {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px 20px;
+    background: rgba(5,13,26,0.7);
+    border-bottom:1px solid var(--border);
+  }
+  .filter-label { font-size:10px; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; }
+  select, .filter-input {
+    background:rgba(15,30,60,0.8); border:1px solid var(--border);
+    color:var(--text-primary); border-radius:7px;
+    padding:5px 10px; font-family:var(--font); font-size:12px; cursor:pointer;
+    outline:none; transition:border .2s;
+  }
+  select:hover, .filter-input:hover { border-color:var(--border-bright); }
+  select:focus, .filter-input:focus { border-color:var(--cyan); box-shadow:0 0 0 2px rgba(0,212,255,0.1); }
+  option { background:#0a1428; }
+  .btn {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 14px; border-radius:8px; border:none; cursor:pointer;
+    font-family:var(--font); font-size:12px; font-weight:600;
+    transition:all .2s; letter-spacing:0.02em;
+  }
+  .btn-cyan { background:linear-gradient(135deg,var(--cyan),#0099cc); color:#000; }
+  .btn-cyan:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,212,255,0.3); }
+  .btn-outline { background:transparent; border:1px solid var(--border-bright); color:var(--cyan); }
+  .btn-outline:hover { background:rgba(0,212,255,0.08); }
+  .btn-green { background:linear-gradient(135deg,var(--green),#00cc66); color:#000; }
+  .btn-green:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,255,136,0.3); }
+
+  /* ─── MAIN LAYOUT ─── */
+  .main { padding:20px; max-width:1600px; margin:0 auto; position:relative; z-index:1; }
+  .page { display:none; animation: pageIn .3s ease; }
+  .page.active { display:block; }
+  @keyframes pageIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── GRID ─── */
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px; }
+  .grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:18px; }
+  .grid-1 { display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:18px; }
+
+  /* ─── KPI CARDS ─── */
+  .kpi-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px; position:relative; overflow:hidden;
+    backdrop-filter:blur(10px); transition:transform .2s, box-shadow .2s;
+  }
+  .kpi-card:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,0,0,0.3), var(--shadow-glow); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:var(--accent, var(--cyan));
+  }
+  .kpi-card.green { --accent: var(--green); }
+  .kpi-card.blue { --accent: var(--blue); }
+  .kpi-card.orange { --accent: var(--orange); }
+  .kpi-card.red { --accent: var(--red); }
+  .kpi-card.purple { --accent: var(--purple); }
+  .kpi-label { font-size:10px; font-weight:600; color:var(--text-secondary); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+  .kpi-value { font-size:28px; font-weight:800; font-family:var(--mono); line-height:1; margin-bottom:6px; }
+  .kpi-value.cyan { color:var(--cyan); }
+  .kpi-value.green { color:var(--green); }
+  .kpi-value.orange { color:var(--orange); }
+  .kpi-value.red { color:var(--red); }
+  .kpi-value.blue { color:var(--blue); }
+  .kpi-value.purple { color:var(--purple); }
+  .kpi-sub { font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:5px; }
+  .kpi-badge {
+    display:inline-flex; align-items:center; gap:3px;
+    padding:2px 7px; border-radius:20px; font-size:10px; font-weight:700;
+    font-family:var(--mono);
+  }
+  .badge-up { background:rgba(0,255,136,0.15); color:var(--green); }
+  .badge-down { background:rgba(255,77,109,0.15); color:var(--red); }
+  .badge-warn { background:rgba(255,159,67,0.15); color:var(--orange); }
+  .kpi-sparkline { position:absolute; bottom:0; right:0; opacity:0.3; }
+  .kpi-icon {
+    position:absolute; top:16px; right:16px;
+    width:36px; height:36px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; opacity:0.7;
+  }
+
+  /* ─── CHART CARDS ─── */
+  .chart-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:20px;
+    backdrop-filter:blur(10px); transition:box-shadow .2s;
+  }
+  .chart-card:hover { box-shadow:0 8px 40px rgba(0,0,0,0.25); }
+  .chart-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .chart-title { font-size:13px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px; }
+  .chart-title .dot { width:8px; height:8px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+  .chart-subtitle { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+  .chart-actions { display:flex; gap:6px; }
+  .chart-tag { font-size:10px; padding:3px 8px; border-radius:20px; border:1px solid var(--border); color:var(--text-secondary); font-weight:600; cursor:pointer; transition:all .2s; }
+  .chart-tag.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.08); }
+  .chart-wrap { position:relative; }
+
+  /* ─── TABLE ─── */
+  .table-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+    backdrop-filter:blur(10px);
+  }
+  .table-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  .table-search { position:relative; }
+  .table-search input { background:rgba(15,30,60,0.8); border:1px solid var(--border); color:var(--text-primary); border-radius:7px; padding:6px 10px 6px 30px; font-family:var(--font); font-size:12px; outline:none; width:180px; transition:all .2s; }
+  .table-search input:focus { border-color:var(--cyan); width:220px; }
+  .table-search svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); width:13px; height:13px; color:var(--text-dim); }
+  .table-wrap { overflow-x:auto; max-height:380px; overflow-y:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  thead { position:sticky; top:0; z-index:5; }
+  th { background:rgba(10,25,50,0.95); color:var(--text-secondary); font-weight:600; letter-spacing:0.06em; text-transform:uppercase; font-size:10px; padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; transition:color .2s; }
+  th:hover { color:var(--cyan); }
+  th.sort-asc::after { content:'↑'; margin-left:4px; color:var(--cyan); }
+  th.sort-desc::after { content:'↓'; margin-left:4px; color:var(--cyan); }
+  td { padding:9px 14px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-primary); white-space:nowrap; }
+  tbody tr:hover { background:rgba(0,212,255,0.04); }
+  tbody tr:last-child td { border-bottom:none; }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:0.04em; }
+  .status-on { background:rgba(0,255,136,0.12); color:var(--green); border:1px solid rgba(0,255,136,0.2); }
+  .status-warn { background:rgba(255,159,67,0.12); color:var(--orange); border:1px solid rgba(255,159,67,0.2); }
+  .status-crit { background:rgba(255,77,109,0.12); color:var(--red); border:1px solid rgba(255,77,109,0.2); }
+  .table-footer { padding:10px 20px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .pagination { display:flex; gap:4px; }
+  .pg-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text-secondary); cursor:pointer; font-family:var(--font); font-size:11px; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+  .pg-btn:hover, .pg-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.08); }
+
+  /* ─── INSIGHT PANEL ─── */
+  .insight-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px;
+    backdrop-filter:blur(10px);
+  }
+  .insight-header { display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:13px; font-weight:700; }
+  .insight-ai-badge { background:linear-gradient(135deg,var(--purple),var(--blue)); padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; color:#fff; }
+  .insight-item { display:flex; align-items:flex-start; gap:10px; padding:10px; border-radius:9px; margin-bottom:8px; transition:background .2s; }
+  .insight-item:hover { background:rgba(255,255,255,0.03); }
+  .insight-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+  .insight-text { font-size:12px; color:var(--text-primary); line-height:1.5; }
+  .insight-meta { font-size:10px; color:var(--text-secondary); margin-top:2px; }
+  .insight-up { background:rgba(0,255,136,0.12); }
+  .insight-down { background:rgba(255,77,109,0.12); }
+  .insight-warn { background:rgba(255,159,67,0.12); }
+  .insight-info { background:rgba(59,130,246,0.12); }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-wrap { margin-bottom:12px; }
+  .progress-label { display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; }
+  .progress-track { height:6px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+
+  /* ─── UPLOAD ZONE ─── */
+  .upload-zone {
+    border:2px dashed var(--border-bright); border-radius:var(--radius);
+    padding:30px; text-align:center; cursor:pointer;
+    background:rgba(0,212,255,0.02); transition:all .3s;
+    margin-bottom:16px;
+  }
+  .upload-zone:hover { border-color:var(--cyan); background:rgba(0,212,255,0.05); }
+  .upload-zone.dragover { border-color:var(--green); background:rgba(0,255,136,0.05); }
+  .upload-icon { font-size:32px; margin-bottom:10px; }
+  .upload-text { font-size:13px; color:var(--text-secondary); }
+  .upload-text strong { color:var(--cyan); }
+
+  /* ─── GAUGE ─── */
+  .gauge-wrap { text-align:center; padding:10px; }
+  .gauge-canvas { width:140px; height:80px; }
+  .gauge-value { font-size:22px; font-weight:800; font-family:var(--mono); }
+  .gauge-label { font-size:10px; color:var(--text-secondary); letter-spacing:0.08em; text-transform:uppercase; }
+
+  /* ─── DIVIDER ─── */
+  .section-label { font-size:10px; font-weight:700; color:var(--text-dim); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ─── TOOLTIP ─── */
+  .custom-tooltip { position:fixed; pointer-events:none; z-index:9999; opacity:0; transition:opacity .15s; }
+  .custom-tooltip.show { opacity:1; }
+  .tooltip-inner { background:rgba(5,13,26,0.97); border:1px solid var(--border-bright); border-radius:10px; padding:10px 14px; font-size:12px; box-shadow:0 8px 30px rgba(0,0,0,0.5); min-width:160px; }
+
+  /* ─── LOADING ─── */
+  .skeleton { background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:6px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ─── NOTIFICATION ─── */
+  .notif-wrap { position:fixed; top:75px; right:20px; z-index:9000; display:flex; flex-direction:column; gap:8px; }
+  .notif {
+    background:rgba(5,13,26,0.96); border:1px solid var(--border-bright);
+    border-radius:10px; padding:12px 16px; font-size:12px; max-width:280px;
+    backdrop-filter:blur(20px); animation:notifIn .3s ease;
+    display:flex; align-items:flex-start; gap:10px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.4);
+  }
+  @keyframes notifIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  .notif-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+  .notif-close { margin-left:auto; cursor:pointer; color:var(--text-dim); font-size:14px; }
+
+  /* ─── FOREMAN CARD ─── */
+  .foreman-card {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:20px;
+    display:flex; flex-direction:column; gap:12px;
+    backdrop-filter:blur(10px); transition:all .2s;
+  }
+  .foreman-card:hover { transform:translateY(-2px); border-color:var(--border-bright); }
+  .foreman-avatar { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; }
+  .foreman-name { font-size:15px; font-weight:700; }
+  .foreman-role { font-size:11px; color:var(--text-secondary); }
+
+  /* ─── DARK/LIGHT TOGGLE ─── */
+  .theme-toggle { width:36px; height:20px; border-radius:20px; border:1px solid var(--border); background:rgba(15,30,60,0.8); cursor:pointer; position:relative; transition:all .3s; }
+  .theme-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--cyan); transition:transform .3s; }
+  .theme-toggle.light::after { transform:translateX(16px); background:var(--orange); }
+
+  /* ─── RESPONSIVE ─── */
+  @media(max-width:1200px) { .grid-4{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:768px) {
+    .grid-4,.grid-3,.grid-2 { grid-template-columns:1fr; }
+    .main { padding:12px; }
+    .header { padding:0 12px; }
+    .header-title h1 { font-size:11px; }
+    .clock-time { font-size:14px; }
+    .nav-bar { padding:8px 12px; }
+    .filter-bar { padding:8px 12px; }
+  }
+
+  /* ─── BADGE COUNT ─── */
+  .count-badge { background:rgba(0,212,255,0.15); color:var(--cyan); padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; font-family:var(--mono); }
+
+  /* scan line effect */
+  .scanline { position:fixed; inset:0; pointer-events:none; z-index:1; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.008) 2px,rgba(0,212,255,0.008) 4px); }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<!-- NOTIFICATION AREA -->
+<div class="notif-wrap" id="notifArea"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo-badge">F</div>
+  <div class="header-title">
+    <h1>FINISHING PRODUCTION MONITORING DASHBOARD</h1>
+    <p>PT. AT Indonesia · Area ACE Finishing · Realtime Monitoring System v2.0</p>
+  </div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="status-dot"></div>
+      <span style="font-size:10px;color:var(--green);font-weight:600;">LIVE</span>
+    </div>
+    <div class="clock-block">
+      <div class="clock-time" id="clockTime">--:--:--</div>
+      <div class="clock-date" id="clockDate">---</div>
+    </div>
+    <button class="btn btn-outline" onclick="exportExcel()" style="padding:5px 10px;">
+      <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17" stroke-width="2" stroke-linecap="round"/></svg>
+      Excel
+    </button>
+    <button class="btn btn-cyan" onclick="printPDF()" style="padding:5px 10px;">
+      <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-2m-8 5h8a1 1 0 001-1v-6a1 1 0 00-1-1H7a1 1 0 00-1 1v6a1 1 0 001 1z" stroke-width="2"/></svg>
+      PDF
+    </button>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-bar">
+  <button class="nav-btn active" onclick="showPage('p1',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+    Executive Summary
+  </button>
+  <button class="nav-btn" onclick="showPage('p2',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-width="2"/></svg>
+    Production Monitoring
+  </button>
+  <button class="nav-btn" onclick="showPage('p3',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="2"/></svg>
+    Man Power & Efficiency
+  </button>
+  <button class="nav-btn" onclick="showPage('p4',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-width="2"/></svg>
+    Foreman Performance
+  </button>
+  <button class="nav-btn" onclick="showPage('p5',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke-width="2"/></svg>
+    Analytics & Insights
+  </button>
+  <button class="nav-btn" onclick="showPage('p6',this)">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-width="2" stroke-linecap="round"/></svg>
+    Upload Data
+  </button>
+</nav>
+
+<!-- FILTERS -->
+<div class="filter-bar">
+  <span class="filter-label">Filter:</span>
+  <select id="fBulan" onchange="applyFilters()">
+    <option value="Mei">Mei 2025</option>
+  </select>
+  <select id="fForeman" onchange="applyFilters()">
+    <option value="all">Semua Foreman</option>
+    <option value="Katun">Katun</option>
+    <option value="Kusuma">Kusuma</option>
+  </select>
+  <select id="fLine" onchange="applyFilters()">
+    <option value="all">Semua Line</option>
+    <option value="ACE 1">ACE 1</option>
+    <option value="ACE 2">ACE 2</option>
+  </select>
+  <select id="fShift" onchange="applyFilters()">
+    <option value="all">Semua Shift</option>
+    <option value="Pagi">Pagi</option>
+    <option value="Malam">Malam</option>
+  </select>
+  <input type="date" class="filter-input" id="fDate" onchange="applyFilters()" style="width:140px;">
+  <button class="btn btn-outline" onclick="resetFilters()" style="font-size:11px;padding:5px 10px;">Reset</button>
+  <div style="margin-left:auto;font-size:11px;color:var(--text-dim);">
+    Auto-refresh: <span id="refreshCountdown" style="color:var(--cyan);font-family:var(--mono);">30s</span>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+<!-- ═══════════ PAGE 1: EXECUTIVE SUMMARY ═══════════ -->
+<div id="p1" class="page active">
+  <div class="section-label">KPI Utama · Bulan Mei 2025</div>
+  <div class="grid-4">
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏭</div>
+      <div class="kpi-label">Total Output Bulan Ini</div>
+      <div class="kpi-value green" id="kpi-total-output">247,048</div>
+      <div class="kpi-sub">
+        <span class="kpi-badge badge-up">↑ +3.2%</span>
+        <span>vs target 23,778/hari</span>
+      </div>
+    </div>
+    <div class="kpi-card cyan">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">Finish Good Total</div>
+      <div class="kpi-value cyan" id="kpi-finish-good">238,870</div>
+      <div class="kpi-sub">
+        <span class="kpi-badge badge-up">96.7%</span>
+        <span>yield rate</span>
+      </div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-label">Total NG (Reject)</div>
+      <div class="kpi-value orange" id="kpi-ng">8,175</div>
+      <div class="kpi-sub">
+        <span class="kpi-badge badge-warn">3.3%</span>
+        <span>NG rate</span>
+      </div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-icon">⏱️</div>
+      <div class="kpi-label">Avg Gentani Process</div>
+      <div class="kpi-value blue" id="kpi-gentani">43.5</div>
+      <div class="kpi-sub">
+        <span class="kpi-badge badge-down">↓ -27%</span>
+        <span>vs target 60 pcs/MH</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="kpi-card">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-label">Total Foreman Aktif</div>
+      <div class="kpi-value cyan">2</div>
+      <div class="kpi-sub">Katun · Kusuma</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-icon">🔧</div>
+      <div class="kpi-label">Line Aktif</div>
+      <div class="kpi-value purple">2</div>
+      <div class="kpi-sub">ACE 1 · ACE 2</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">Hari Produksi Aktif</div>
+      <div class="kpi-value green">6</div>
+      <div class="kpi-sub">Data tersedia Tgl 2–7 Mei</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">🚨</div>
+      <div class="kpi-label">Total Absensi (hari)</div>
+      <div class="kpi-value red" id="kpi-absensi">17</div>
+      <div class="kpi-sub">Katun + Kusuma</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot"></span> Plan vs Actual Output Harian</div>
+          <div class="chart-subtitle">Target 23,778 pcs/hari · Kedua Foreman</div>
+        </div>
+        <div class="chart-actions">
+          <span class="chart-tag active" onclick="toggleChartView(this,'pvaTgl')">Tanggal</span>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="chartPVA"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--green)"></span> Finish Good vs NG Rate</div>
+          <div class="chart-subtitle">Kualitas output per hari</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="chartQuality"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="chart-card" style="grid-column:1/3">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--orange)"></span> Gentani Process Trend</div>
+          <div class="chart-subtitle">Produktivitas (pcs/MH) vs target 60</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:200px;">
+        <canvas id="chartGentani"></canvas>
+      </div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-header">
+        🤖 Smart Insights
+        <span class="insight-ai-badge">AI</span>
+      </div>
+      <div id="execInsights"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 2: PRODUCTION MONITORING ═══════════ -->
+<div id="p2" class="page">
+  <div class="section-label">Monitoring Produksi Detail</div>
+
+  <div class="grid-4">
+    <div class="kpi-card cyan">
+      <div class="kpi-label">Output ACE 1 (Katun)</div>
+      <div class="kpi-value cyan">56,746</div>
+      <div class="kpi-sub"><span class="kpi-badge badge-up">Tgl 2–7</span></div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Output ACE 2 (Katun)</div>
+      <div class="kpi-value blue">59,098</div>
+      <div class="kpi-sub"><span class="kpi-badge badge-up">Tgl 2–7</span></div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Output ACE 1 (Kusuma)</div>
+      <div class="kpi-value green">37,751</div>
+      <div class="kpi-sub"><span class="kpi-badge badge-warn">Tgl 2–7</span></div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Output ACE 2 (Kusuma)</div>
+      <div class="kpi-value orange">64,083</div>
+      <div class="kpi-sub"><span class="kpi-badge badge-up">Tgl 2–7</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot"></span> Output per Line – Katun</div>
+          <div class="chart-subtitle">ACE 1 vs ACE 2 vs Target</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:250px;">
+        <canvas id="chartKatunLine"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--green)"></span> Output per Line – Kusuma</div>
+          <div class="chart-subtitle">ACE 1 vs ACE 2 vs Target</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:250px;">
+        <canvas id="chartKusumaLine"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONITORING TABLE -->
+  <div class="table-card">
+    <div class="table-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="chart-title"><span class="dot"></span> Monitoring Harian</div>
+        <span class="count-badge" id="tblCount">12 records</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="table-search">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2"/></svg>
+          <input type="text" id="tableSearch" placeholder="Cari data..." onkeyup="filterTable()" />
+        </div>
+        <button class="btn btn-green" onclick="exportTableExcel()">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15V3m0 12l-4-4m4 4l4-4" stroke-width="2" stroke-linecap="round"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="monTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">Tanggal</th>
+            <th onclick="sortTable(1)">Foreman</th>
+            <th onclick="sortTable(2)">Line</th>
+            <th onclick="sortTable(3)">Plan</th>
+            <th onclick="sortTable(4)">Actual</th>
+            <th onclick="sortTable(5)">FG</th>
+            <th onclick="sortTable(6)">NG</th>
+            <th onclick="sortTable(7)">NG%</th>
+            <th onclick="sortTable(8)">Gentani</th>
+            <th onclick="sortTable(9)">MH Actual</th>
+            <th onclick="sortTable(10)">MH Process</th>
+            <th onclick="sortTable(11)">Absensi</th>
+            <th onclick="sortTable(12)">Status</th>
+          </tr>
+        </thead>
+        <tbody id="monTableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span style="font-size:11px;color:var(--text-secondary);" id="tblInfo">Showing 1–10 of 12</span>
+      <div class="pagination" id="tablePagination"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 3: MANPOWER & EFFICIENCY ═══════════ -->
+<div id="p3" class="page">
+  <div class="section-label">Man Power & Efisiensi Produksi</div>
+
+  <div class="grid-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total MH Actual (Katun)</div>
+      <div class="kpi-value cyan">1,652</div>
+      <div class="kpi-sub">Man-Hour digunakan</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Total MH Process (Katun)</div>
+      <div class="kpi-value green">1,289</div>
+      <div class="kpi-sub">78.0% dari MH Actual</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Total MH Actual (Kusuma)</div>
+      <div class="kpi-value blue">1,477</div>
+      <div class="kpi-sub">Man-Hour digunakan</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Total MH Process (Kusuma)</div>
+      <div class="kpi-value orange">1,095</div>
+      <div class="kpi-sub">74.1% dari MH Actual</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot"></span> MH Actual vs Process – Katun</div>
+          <div class="chart-subtitle">Man-Hour harian</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="chartMHKatun"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--green)"></span> MH Actual vs Process – Kusuma</div>
+          <div class="chart-subtitle">Man-Hour harian</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="chartMHKusuma"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--orange)"></span> Absensi Harian</div>
+          <div class="chart-subtitle">Jumlah MP absen per hari</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="chartAbsensi"></canvas>
+      </div>
+    </div>
+    <div class="chart-card" style="grid-column:2/4">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--purple)"></span> Efisiensi Produksi (Gentani vs Target)</div>
+          <div class="chart-subtitle">pcs/MH · Target: 60</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="chartEfficiency"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gauge-style efficiency summary -->
+  <div class="grid-4">
+    <div class="chart-card" style="text-align:center;padding:16px;">
+      <div class="chart-title" style="justify-content:center;margin-bottom:10px;">Katun MH Util.</div>
+      <div style="font-size:36px;font-weight:800;color:var(--cyan);font-family:var(--mono);">78.0%</div>
+      <div style="font-size:11px;color:var(--text-secondary);">MH Process / MH Actual</div>
+      <div style="margin-top:10px;"><div class="progress-track"><div class="progress-fill" style="width:78%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div></div>
+    </div>
+    <div class="chart-card" style="text-align:center;padding:16px;">
+      <div class="chart-title" style="justify-content:center;margin-bottom:10px;">Kusuma MH Util.</div>
+      <div style="font-size:36px;font-weight:800;color:var(--green);font-family:var(--mono);">74.1%</div>
+      <div style="font-size:11px;color:var(--text-secondary);">MH Process / MH Actual</div>
+      <div style="margin-top:10px;"><div class="progress-track"><div class="progress-fill" style="width:74%;background:linear-gradient(90deg,var(--green),#00cc66)"></div></div></div>
+    </div>
+    <div class="chart-card" style="text-align:center;padding:16px;">
+      <div class="chart-title" style="justify-content:center;margin-bottom:10px;">Avg Gentani Katun</div>
+      <div style="font-size:36px;font-weight:800;color:var(--orange);font-family:var(--mono);">44.5</div>
+      <div style="font-size:11px;color:var(--text-secondary);">pcs/MH · Target 60</div>
+      <div style="margin-top:10px;"><div class="progress-track"><div class="progress-fill" style="width:74%;background:linear-gradient(90deg,var(--orange),#ff6b00)"></div></div></div>
+    </div>
+    <div class="chart-card" style="text-align:center;padding:16px;">
+      <div class="chart-title" style="justify-content:center;margin-bottom:10px;">Avg Gentani Kusuma</div>
+      <div style="font-size:36px;font-weight:800;color:var(--purple);font-family:var(--mono);">38.6</div>
+      <div style="font-size:11px;color:var(--text-secondary);">pcs/MH · Target 60</div>
+      <div style="margin-top:10px;"><div class="progress-track"><div class="progress-fill" style="width:64%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 4: FOREMAN PERFORMANCE ═══════════ -->
+<div id="p4" class="page">
+  <div class="section-label">Performa Foreman</div>
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <!-- KATUN CARD -->
+    <div class="foreman-card">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="foreman-avatar" style="background:linear-gradient(135deg,var(--cyan),var(--blue));color:#000;">K</div>
+        <div>
+          <div class="foreman-name">Foreman: KATUN</div>
+          <div class="foreman-role">Shift Area · ACE 1 + ACE 2 · Mei 2025</div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="status-pill status-on">✓ ON TARGET</span>
+        </div>
+      </div>
+      <div class="grid-2" style="margin:0;">
+        <div>
+          <div class="section-label" style="font-size:9px;margin-bottom:6px;">TOTAL OUTPUT</div>
+          <div style="font-size:24px;font-weight:800;color:var(--cyan);font-family:var(--mono);">115,844</div>
+          <div style="font-size:10px;color:var(--text-secondary);">Tgl 2–7 Mei</div>
+        </div>
+        <div>
+          <div class="section-label" style="font-size:9px;margin-bottom:6px;">FINISH GOOD</div>
+          <div style="font-size:24px;font-weight:800;color:var(--green);font-family:var(--mono);">111,898</div>
+          <div style="font-size:10px;color:var(--text-secondary);">96.6% yield</div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">ACE 1 Output</span><span style="font-size:11px;color:var(--cyan);">56,746 pcs</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:49%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">ACE 2 Output</span><span style="font-size:11px;color:var(--cyan);">59,098 pcs</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:51%;background:linear-gradient(90deg,var(--blue),var(--purple))"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">Avg Gentani</span><span style="font-size:11px;color:var(--orange);">44.5 / 60 target</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:74%;background:linear-gradient(90deg,var(--orange),#e67e00)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KUSUMA CARD -->
+    <div class="foreman-card">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="foreman-avatar" style="background:linear-gradient(135deg,var(--green),#00cc66);color:#000;">K</div>
+        <div>
+          <div class="foreman-name">Foreman: KUSUMA</div>
+          <div class="foreman-role">Shift Area · ACE 1 + ACE 2 · Mei 2025</div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="status-pill status-warn">⚡ WARNING</span>
+        </div>
+      </div>
+      <div class="grid-2" style="margin:0;">
+        <div>
+          <div class="section-label" style="font-size:9px;margin-bottom:6px;">TOTAL OUTPUT</div>
+          <div style="font-size:24px;font-weight:800;color:var(--green);font-family:var(--mono);">101,754</div>
+          <div style="font-size:10px;color:var(--text-secondary);">Tgl 2–7 Mei</div>
+        </div>
+        <div>
+          <div class="section-label" style="font-size:9px;margin-bottom:6px;">FINISH GOOD</div>
+          <div style="font-size:24px;font-weight:800;color:var(--cyan);font-family:var(--mono);">98,787</div>
+          <div style="font-size:10px;color:var(--text-secondary);">97.1% yield</div>
+        </div>
+      </div>
+      <div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">ACE 1 Output</span><span style="font-size:11px;color:var(--green);">37,751 pcs</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:37%;background:linear-gradient(90deg,var(--green),#00cc66)"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">ACE 2 Output</span><span style="font-size:11px;color:var(--green);">64,083 pcs</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:63%;background:linear-gradient(90deg,#00cc66,var(--cyan))"></div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="font-size:11px;">Avg Gentani</span><span style="font-size:11px;color:var(--red);">38.6 / 60 target</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:64%;background:linear-gradient(90deg,var(--red),var(--orange))"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot"></span> Resume Foreman – Output Harian</div>
+          <div class="chart-subtitle">Katun vs Kusuma vs Target</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:250px;">
+        <canvas id="chartForemanResume"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--orange)"></span> Gentani Comparison</div>
+          <div class="chart-subtitle">Produktivitas per foreman vs target 60</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:250px;">
+        <canvas id="chartForemanGentani"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title"><span class="dot" style="background:var(--purple)"></span> Resume Section – ACE 1 vs ACE 2 per Foreman</div>
+        <div class="chart-subtitle">Perbandingan output per section/line</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:220px;">
+      <canvas id="chartSectionResume"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 5: ANALYTICS ═══════════ -->
+<div id="p5" class="page">
+  <div class="section-label">Analytics & Smart Insights</div>
+
+  <div class="grid-3">
+    <div class="insight-card" style="grid-column:1/3">
+      <div class="insight-header">
+        🤖 Auto-Generated AI Insights
+        <span class="insight-ai-badge">AI ANALYTICS</span>
+      </div>
+      <div id="analyticsInsights"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--red)"></span> Anomaly Detection</div>
+          <div class="chart-subtitle">Penyimpangan dari target</div>
+        </div>
+      </div>
+      <div id="anomalyList" style="padding:4px;"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--purple)"></span> Trend Analysis – Output</div>
+          <div class="chart-subtitle">Moving average & trend line</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="chartTrend"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="dot" style="background:var(--orange)"></span> NG Pareto Analysis</div>
+          <div class="chart-subtitle">NG per foreman per hari</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:230px;">
+        <canvas id="chartNGPareto"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title"><span class="dot"></span> Radar – Performance Matrix per Foreman</div>
+        <div class="chart-subtitle">Output · FG Rate · Gentani · MH Efficiency · Absensi</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="chart-wrap" style="height:280px;"><canvas id="chartRadarKatun"></canvas></div>
+      <div class="chart-wrap" style="height:280px;"><canvas id="chartRadarKusuma"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PAGE 6: UPLOAD ═══════════ -->
+<div id="p6" class="page">
+  <div class="section-label">Import & Update Data</div>
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-header"><div class="chart-title"><span class="dot"></span> Upload File Excel</div></div>
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text"><strong>Klik atau drag file Excel di sini</strong></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Format: .xlsx · Laporan_Harian_Finishing.xlsx</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
+      <div id="uploadStatus"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><div class="chart-title"><span class="dot" style="background:var(--green)"></span> Struktur Data Yang Diharapkan</div></div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:2;">
+        <div style="padding:6px;border-radius:6px;background:rgba(0,212,255,0.05);margin-bottom:6px;border:1px solid var(--border);">
+          📋 Sheet: <strong style="color:var(--cyan)">Data Finishing</strong><br>
+          <span style="font-size:11px;">Rows: Target Output · Act Output ACE1/2 · Finish Good · NG · MH · Gentani · Absensi</span>
+        </div>
+        <div style="padding:6px;border-radius:6px;background:rgba(0,255,136,0.05);margin-bottom:6px;border:1px solid rgba(0,255,136,0.1);">
+          👷 Foreman: <strong style="color:var(--green)">Katun</strong> (row 1–22) · <strong style="color:var(--green)">Kusuma</strong> (row 24–46)
+        </div>
+        <div style="padding:6px;border-radius:6px;background:rgba(255,159,67,0.05);border:1px solid rgba(255,159,67,0.1);">
+          📅 Kolom tanggal: <strong style="color:var(--orange)">Kolom 1–31</strong> (hari dalam bulan)
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-cyan" onclick="loadCurrentData()" style="width:100%;justify-content:center;">
+          🔄 Reload Data Saat Ini
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- .main -->
+
+<script>
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+const TARGET_DAILY = 23777.864268;
+const TARGET_GENTANI = 60;
+
+const katunData = {
+  2: {act_ace1:283,act_ace2:1709,total_output:1992,finish_good:1910,ng:82,mh_actual:0,mh_process:0,gentani:0,absensi:0},
+  3: {act_ace1:827,act_ace2:8980,total_output:9807,finish_good:9564,ng:243,mh_actual:126,mh_process:92,gentani:33.77,absensi:0},
+  4: {act_ace1:9797,act_ace2:11871,total_output:21668,finish_good:20583,ng:1085,mh_actual:385.25,mh_process:305.25,gentani:50.72,absensi:3},
+  5: {act_ace1:11765,act_ace2:11852,total_output:23617,finish_good:22700,ng:917,mh_actual:371.5,mh_process:285.5,gentani:43.52,absensi:2},
+  6: {act_ace1:11913,act_ace2:12224,total_output:24137,finish_good:23395,ng:742,mh_actual:385,mh_process:305,gentani:45.49,absensi:1},
+  7: {act_ace1:12161,act_ace2:12334,total_output:24495,finish_good:23746,ng:749,mh_actual:384.25,mh_process:301.25,gentani:44.27,absensi:1}
+};
+const kusumaData = {
+  2: {act_ace1:288,act_ace2:1841,total_output:2129,finish_good:2064,ng:65,mh_actual:0,mh_process:0,gentani:0,absensi:0},
+  3: {act_ace1:0,act_ace2:8405,total_output:8405,finish_good:8191,ng:214,mh_actual:124,mh_process:86.5,gentani:37.05,absensi:3},
+  4: {act_ace1:8166,act_ace2:13529,total_output:21695,finish_good:21052,ng:643,mh_actual:319.75,mh_process:219.75,gentani:36.46,absensi:3},
+  5: {act_ace1:9526,act_ace2:12658,total_output:22184,finish_good:21525,ng:659,mh_actual:319.75,mh_process:234.75,gentani:38.10,absensi:3},
+  6: {act_ace1:10984,act_ace2:12484,total_output:23468,finish_good:22680,ng:788,mh_actual:347.75,mh_process:267.75,gentani:41.07,absensi:1},
+  7: {act_ace1:8787,act_ace2:15086,total_output:23873,finish_good:23275,ng:598,mh_actual:366.25,mh_process:286.25,gentani:43.17,absensi:0}
+};
+
+const days = [2,3,4,5,6,7];
+const dayLabels = days.map(d=>`Tgl-${d}`);
+
+// ─────────────────────────────────────────────
+// CHART DEFAULTS
+// ─────────────────────────────────────────────
+Chart.defaults.color = '#7a9bc4';
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.font.size = 11;
+
+const gridLine = { color:'rgba(255,255,255,0.04)', drawBorder:false };
+const tickStyle = { color:'#4a6a90', font:{size:10} };
+
+function makeComboChart(id, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if(!ctx) return;
+  return new Chart(ctx, {
+    data:{ labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      animation:{ duration:800, easing:'easeInOutQuart' },
+      plugins:{
+        legend:{ labels:{ color:'#7a9bc4', font:{size:11}, boxWidth:12, padding:14 } },
+        tooltip:{
+          backgroundColor:'rgba(5,13,26,0.95)',
+          borderColor:'rgba(0,212,255,0.3)', borderWidth:1,
+          titleColor:'#e8f4ff', bodyColor:'#7a9bc4',
+          padding:10, cornerRadius:8
+        }
+      },
+      scales:{
+        x:{ grid:gridLine, ticks:tickStyle },
+        y:{ grid:gridLine, ticks:tickStyle, beginAtZero:true, ...( opts.yLeft||{} ) },
+        y1: opts.y1 ? { type:'linear', position:'right', grid:{drawOnChartArea:false}, ticks:tickStyle, ...opts.y1 } : undefined
+      },
+      ...opts.extra
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// INIT CHARTS
+// ─────────────────────────────────────────────
+function initCharts() {
+  const totalKatun = days.map(d=>katunData[d].total_output);
+  const totalKusuma = days.map(d=>kusumaData[d].total_output);
+  const combinedActual = days.map(d=>katunData[d].total_output+kusumaData[d].total_output);
+  const targetLine = days.map(()=>TARGET_DAILY*2);
+
+  // ── Plan vs Actual
+  makeComboChart('chartPVA', dayLabels, [
+    { type:'bar', label:'Katun Output', data:totalKatun, backgroundColor:'rgba(0,212,255,0.55)', borderColor:'var(--cyan)', borderWidth:1.5, borderRadius:4 },
+    { type:'bar', label:'Kusuma Output', data:totalKusuma, backgroundColor:'rgba(59,130,246,0.55)', borderColor:'var(--blue)', borderWidth:1.5, borderRadius:4 },
+    { type:'line', label:'Target (per foreman)', data:days.map(()=>TARGET_DAILY), borderColor:'rgba(255,159,67,0.8)', borderWidth:2, borderDash:[5,3], pointRadius:3, fill:false, tension:0 }
+  ]);
+
+  // ── Quality
+  const fgKatun = days.map(d=>katunData[d].finish_good);
+  const ngKatun = days.map(d=>katunData[d].ng);
+  const fgKusuma = days.map(d=>kusumaData[d].finish_good);
+  makeComboChart('chartQuality', dayLabels, [
+    { type:'bar', label:'FG Katun', data:fgKatun, backgroundColor:'rgba(0,255,136,0.5)', borderColor:'var(--green)', borderWidth:1.5, borderRadius:4 },
+    { type:'bar', label:'FG Kusuma', data:fgKusuma, backgroundColor:'rgba(0,200,100,0.35)', borderColor:'#00cc66', borderWidth:1.5, borderRadius:4 },
+    { type:'line', label:'NG Katun', data:ngKatun, borderColor:'var(--red)', backgroundColor:'rgba(255,77,109,0.1)', borderWidth:2, pointRadius:3, fill:true, tension:0.4, yAxisID:'y1' }
+  ], { y1:{ min:0 } });
+
+  // ── Gentani
+  const gentKatun = days.map(d=>katunData[d].gentani);
+  const gentKusuma = days.map(d=>kusumaData[d].gentani);
+  makeComboChart('chartGentani', dayLabels, [
+    { type:'bar', label:'Gentani Katun', data:gentKatun, backgroundColor:'rgba(255,159,67,0.6)', borderColor:'var(--orange)', borderWidth:1.5, borderRadius:4 },
+    { type:'bar', label:'Gentani Kusuma', data:gentKusuma, backgroundColor:'rgba(168,85,247,0.5)', borderColor:'var(--purple)', borderWidth:1.5, borderRadius:4 },
+    { type:'line', label:'Target 60', data:days.map(()=>TARGET_GENTANI), borderColor:'rgba(255,255,255,0.4)', borderWidth:2, borderDash:[6,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── Katun Line
+  makeComboChart('chartKatunLine', dayLabels, [
+    { type:'bar', label:'ACE 1', data:days.map(d=>katunData[d].act_ace1), backgroundColor:'rgba(0,212,255,0.6)', borderRadius:4 },
+    { type:'bar', label:'ACE 2', data:days.map(d=>katunData[d].act_ace2), backgroundColor:'rgba(59,130,246,0.6)', borderRadius:4 },
+    { type:'line', label:'Target', data:days.map(()=>TARGET_DAILY/2), borderColor:'var(--orange)', borderWidth:2, borderDash:[4,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── Kusuma Line
+  makeComboChart('chartKusumaLine', dayLabels, [
+    { type:'bar', label:'ACE 1', data:days.map(d=>kusumaData[d].act_ace1), backgroundColor:'rgba(0,255,136,0.6)', borderRadius:4 },
+    { type:'bar', label:'ACE 2', data:days.map(d=>kusumaData[d].act_ace2), backgroundColor:'rgba(0,200,100,0.5)', borderRadius:4 },
+    { type:'line', label:'Target', data:days.map(()=>TARGET_DAILY/2), borderColor:'var(--orange)', borderWidth:2, borderDash:[4,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── MH Katun
+  makeComboChart('chartMHKatun', dayLabels, [
+    { type:'bar', label:'MH Actual', data:days.map(d=>katunData[d].mh_actual), backgroundColor:'rgba(0,212,255,0.55)', borderRadius:4 },
+    { type:'bar', label:'MH Process', data:days.map(d=>katunData[d].mh_process), backgroundColor:'rgba(0,255,136,0.5)', borderRadius:4 },
+    { type:'line', label:'MH Non-Process', data:days.map(d=>Math.max(0,katunData[d].mh_actual-katunData[d].mh_process)), borderColor:'var(--red)', borderWidth:2, pointRadius:3, fill:false, tension:0.4 }
+  ]);
+
+  // ── MH Kusuma
+  makeComboChart('chartMHKusuma', dayLabels, [
+    { type:'bar', label:'MH Actual', data:days.map(d=>kusumaData[d].mh_actual), backgroundColor:'rgba(59,130,246,0.55)', borderRadius:4 },
+    { type:'bar', label:'MH Process', data:days.map(d=>kusumaData[d].mh_process), backgroundColor:'rgba(168,85,247,0.5)', borderRadius:4 },
+    { type:'line', label:'MH Non-Process', data:days.map(d=>Math.max(0,kusumaData[d].mh_actual-kusumaData[d].mh_process)), borderColor:'var(--orange)', borderWidth:2, pointRadius:3, fill:false, tension:0.4 }
+  ]);
+
+  // ── Absensi
+  makeComboChart('chartAbsensi', dayLabels, [
+    { type:'bar', label:'Absensi Katun', data:days.map(d=>katunData[d].absensi), backgroundColor:'rgba(255,159,67,0.7)', borderRadius:4 },
+    { type:'bar', label:'Absensi Kusuma', data:days.map(d=>kusumaData[d].absensi), backgroundColor:'rgba(255,77,109,0.6)', borderRadius:4 }
+  ]);
+
+  // ── Efficiency
+  makeComboChart('chartEfficiency', dayLabels, [
+    { type:'line', label:'Gentani Katun', data:days.map(d=>katunData[d].gentani), borderColor:'var(--orange)', fill:true, backgroundColor:'rgba(255,159,67,0.1)', borderWidth:2.5, tension:0.4, pointRadius:4 },
+    { type:'line', label:'Gentani Kusuma', data:days.map(d=>kusumaData[d].gentani), borderColor:'var(--purple)', fill:true, backgroundColor:'rgba(168,85,247,0.1)', borderWidth:2.5, tension:0.4, pointRadius:4 },
+    { type:'line', label:'Target 60', data:days.map(()=>60), borderColor:'rgba(255,255,255,0.3)', borderDash:[6,3], borderWidth:1.5, pointRadius:0, fill:false }
+  ]);
+
+  // ── Foreman Resume
+  makeComboChart('chartForemanResume', dayLabels, [
+    { type:'bar', label:'Katun', data:totalKatun, backgroundColor:'rgba(0,212,255,0.6)', borderRadius:4 },
+    { type:'bar', label:'Kusuma', data:totalKusuma, backgroundColor:'rgba(0,255,136,0.55)', borderRadius:4 },
+    { type:'line', label:'Target', data:days.map(()=>TARGET_DAILY), borderColor:'var(--orange)', borderWidth:2, borderDash:[5,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── Foreman Gentani
+  makeComboChart('chartForemanGentani', dayLabels, [
+    { type:'line', label:'Katun', data:days.map(d=>katunData[d].gentani), borderColor:'var(--cyan)', backgroundColor:'rgba(0,212,255,0.1)', fill:true, borderWidth:2.5, tension:0.4, pointRadius:4 },
+    { type:'line', label:'Kusuma', data:days.map(d=>kusumaData[d].gentani), borderColor:'var(--green)', backgroundColor:'rgba(0,255,136,0.1)', fill:true, borderWidth:2.5, tension:0.4, pointRadius:4 },
+    { type:'line', label:'Target', data:days.map(()=>60), borderColor:'rgba(255,255,255,0.25)', borderWidth:1.5, borderDash:[5,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── Section Resume
+  makeComboChart('chartSectionResume', ['ACE 1 – Katun','ACE 2 – Katun','ACE 1 – Kusuma','ACE 2 – Kusuma'], [
+    { type:'bar', label:'Output', data:[56746,59098,37751,64083], backgroundColor:['rgba(0,212,255,0.7)','rgba(59,130,246,0.7)','rgba(0,255,136,0.7)','rgba(0,200,100,0.65)'], borderRadius:5 }
+  ]);
+
+  // ── Trend
+  const combined = days.map(d=>katunData[d].total_output+kusumaData[d].total_output);
+  const ma = combined.map((_,i)=>{ const sl=combined.slice(Math.max(0,i-1),i+2); return sl.reduce((a,b)=>a+b)/sl.length; });
+  makeComboChart('chartTrend', dayLabels, [
+    { type:'bar', label:'Total Output', data:combined, backgroundColor:'rgba(0,212,255,0.3)', borderRadius:4 },
+    { type:'line', label:'Moving Average', data:ma, borderColor:'var(--cyan)', borderWidth:2.5, tension:0.4, pointRadius:3, fill:false },
+    { type:'line', label:'Target (×2)', data:days.map(()=>TARGET_DAILY*2), borderColor:'rgba(255,159,67,0.6)', borderWidth:1.5, borderDash:[5,3], pointRadius:0, fill:false }
+  ]);
+
+  // ── NG Pareto
+  makeComboChart('chartNGPareto', dayLabels, [
+    { type:'bar', label:'NG Katun', data:days.map(d=>katunData[d].ng), backgroundColor:'rgba(255,159,67,0.7)', borderRadius:4 },
+    { type:'bar', label:'NG Kusuma', data:days.map(d=>kusumaData[d].ng), backgroundColor:'rgba(255,77,109,0.65)', borderRadius:4 },
+    { type:'line', label:'NG% Katun', data:days.map(d=>katunData[d].total_output>0?(katunData[d].ng/katunData[d].total_output*100).toFixed(1):0), borderColor:'var(--orange)', borderWidth:2, pointRadius:3, fill:false, tension:0.4, yAxisID:'y1' }
+  ], { y1:{ min:0 } });
+
+  // ── Radar Katun
+  new Chart(document.getElementById('chartRadarKatun'), {
+    type:'radar',
+    data:{
+      labels:['Output Rate','FG Rate','Gentani Score','MH Efficiency','Disiplin'],
+      datasets:[{
+        label:'Katun',
+        data:[96,96.6,74,78,93],
+        borderColor:'var(--cyan)', backgroundColor:'rgba(0,212,255,0.15)',
+        borderWidth:2, pointBackgroundColor:'var(--cyan)', pointRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{ r:{ min:0, max:100, grid:{color:'rgba(255,255,255,0.06)'}, pointLabels:{color:'#7a9bc4',font:{size:10}}, ticks:{color:'#3d5a7a',backdropColor:'transparent'} } },
+      plugins:{ legend:{ labels:{color:'#7a9bc4'} }, tooltip:{backgroundColor:'rgba(5,13,26,0.95)',borderColor:'rgba(0,212,255,0.3)',borderWidth:1} }
+    }
+  });
+
+  // ── Radar Kusuma
+  new Chart(document.getElementById('chartRadarKusuma'), {
+    type:'radar',
+    data:{
+      labels:['Output Rate','FG Rate','Gentani Score','MH Efficiency','Disiplin'],
+      datasets:[{
+        label:'Kusuma',
+        data:[89,97.1,64,74,80],
+        borderColor:'var(--green)', backgroundColor:'rgba(0,255,136,0.12)',
+        borderWidth:2, pointBackgroundColor:'var(--green)', pointRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{ r:{ min:0, max:100, grid:{color:'rgba(255,255,255,0.06)'}, pointLabels:{color:'#7a9bc4',font:{size:10}}, ticks:{color:'#3d5a7a',backdropColor:'transparent'} } },
+      plugins:{ legend:{ labels:{color:'#7a9bc4'} }, tooltip:{backgroundColor:'rgba(5,13,26,0.95)',borderColor:'rgba(0,212,255,0.3)',borderWidth:1} }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+// TABLE
+// ─────────────────────────────────────────────
+let tableData = [];
+let tablePage = 1;
+const TABLE_PER_PAGE = 8;
+let sortCol = 0, sortDir = 1;
+
+function buildTableData() {
+  tableData = [];
+  days.forEach(d => {
+    const k = katunData[d];
+    const ku = kusumaData[d];
+    const getStatus = (actual) => {
+      const pct = actual / TARGET_DAILY;
+      if(pct >= 0.95) return 'ON TARGET';
+      if(pct >= 0.8) return 'WARNING';
+      return 'CRITICAL';
+    };
+    if(k.total_output > 0) {
+      const ng_pct = k.total_output > 0 ? (k.ng/k.total_output*100).toFixed(1)+'%' : '-';
+      tableData.push([`Mei-${d}`,'Katun','ACE 1+2',
+        (TARGET_DAILY*2).toFixed(0), k.total_output.toLocaleString(), k.finish_good.toLocaleString(),
+        k.ng, ng_pct, k.gentani>0?k.gentani.toFixed(1):'-',
+        k.mh_actual||'-', k.mh_process||'-', k.absensi, getStatus(k.total_output)
+      ]);
+    }
+    if(ku.total_output > 0) {
+      const ng_pct = ku.total_output > 0 ? (ku.ng/ku.total_output*100).toFixed(1)+'%' : '-';
+      tableData.push([`Mei-${d}`,'Kusuma','ACE 1+2',
+        (TARGET_DAILY*2).toFixed(0), ku.total_output.toLocaleString(), ku.finish_good.toLocaleString(),
+        ku.ng, ng_pct, ku.gentani>0?ku.gentani.toFixed(1):'-',
+        ku.mh_actual||'-', ku.mh_process||'-', ku.absensi, getStatus(ku.total_output)
+      ]);
+    }
+  });
+  renderTable();
+}
+
+function renderTable(search='') {
+  const tbody = document.getElementById('monTableBody');
+  let data = tableData.filter(r => search ? r.some(c=>String(c).toLowerCase().includes(search.toLowerCase())) : true);
+  data.sort((a,b)=>{
+    const av = isNaN(a[sortCol]) ? a[sortCol] : +a[sortCol];
+    const bv = isNaN(b[sortCol]) ? b[sortCol] : +b[sortCol];
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+  const total = data.length;
+  const start = (tablePage-1)*TABLE_PER_PAGE;
+  const slice = data.slice(start, start+TABLE_PER_PAGE);
+  document.getElementById('tblCount').textContent = `${total} records`;
+  document.getElementById('tblInfo').textContent = `Showing ${start+1}–${Math.min(start+TABLE_PER_PAGE,total)} of ${total}`;
+  tbody.innerHTML = slice.map(r => {
+    const status = r[12];
+    const sc = status==='ON TARGET'?'status-on':status==='WARNING'?'status-warn':'status-crit';
+    const icon = status==='ON TARGET'?'✓':status==='WARNING'?'⚡':'🚨';
+    const gentaniVal = r[8];
+    const gentaniColor = gentaniVal === '-' ? 'var(--text-dim)' : +gentaniVal >= 50 ? 'var(--green)' : +gentaniVal >= 35 ? 'var(--orange)' : 'var(--red)';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;">${r[0]}</td>
+      <td><span style="color:${r[1]==='Katun'?'var(--cyan)':'var(--green)'};font-weight:600;">${r[1]}</span></td>
+      <td style="color:var(--text-secondary);">${r[2]}</td>
+      <td style="font-family:var(--mono);color:var(--text-secondary);">${r[3]}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--text-primary);">${r[4]}</td>
+      <td style="font-family:var(--mono);color:var(--green);">${r[5]}</td>
+      <td style="font-family:var(--mono);color:var(--orange);">${r[6]}</td>
+      <td style="font-family:var(--mono);color:var(--red);">${r[7]}</td>
+      <td style="font-family:var(--mono);color:${gentaniColor};">${r[8]}</td>
+      <td style="font-family:var(--mono);">${r[9]}</td>
+      <td style="font-family:var(--mono);">${r[10]}</td>
+      <td style="font-family:var(--mono);color:${r[11]>2?'var(--red)':r[11]>0?'var(--orange)':'var(--text-secondary)'};">${r[11]}</td>
+      <td><span class="status-pill ${sc}">${icon} ${status}</span></td>
+    </tr>`;
+  }).join('');
+
+  // pagination
+  const pages = Math.ceil(total/TABLE_PER_PAGE);
+  const pg = document.getElementById('tablePagination');
+  pg.innerHTML = '';
+  for(let i=1;i<=pages;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'pg-btn' + (i===tablePage?' active':'');
+    btn.textContent = i;
+    btn.onclick = ()=>{ tablePage=i; renderTable(document.getElementById('tableSearch').value); };
+    pg.appendChild(btn);
+  }
+}
+
+function sortTable(col) {
+  if(sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=1; }
+  document.querySelectorAll('th').forEach((t,i)=>{ t.classList.remove('sort-asc','sort-desc'); if(i===col) t.classList.add(sortDir===1?'sort-asc':'sort-desc'); });
+  tablePage=1;
+  renderTable(document.getElementById('tableSearch').value);
+}
+
+function filterTable() {
+  tablePage=1;
+  renderTable(document.getElementById('tableSearch').value);
+}
+
+// ─────────────────────────────────────────────
+// INSIGHTS
+// ─────────────────────────────────────────────
+function generateInsights() {
+  const insights = [
+    { icon:'📈', cls:'insight-up', text:'Output harian Katun tgl 6 mencapai 24,137 pcs — <strong>melebihi target</strong> 23,778 (101.5%)', meta:'Tgl 6 Mei · ACE 1+2' },
+    { icon:'⚠️', cls:'insight-warn', text:'Kusuma tgl 3 hanya mencapai 8,405 pcs (<strong>35.4% target</strong>). ACE 1 = 0 output. Perlu investigasi.', meta:'Tgl 3 Mei · ACE 1 tidak ada output' },
+    { icon:'📉', cls:'insight-down', text:'Gentani Process <strong>rata-rata 42.0 vs target 60</strong>. Efisiensi masih 70% dari target — perlu improvement.', meta:'Keseluruhan bulan Mei' },
+    { icon:'✅', cls:'insight-up', text:'Kusuma tgl 7: ACE 2 mencapai 15,086 pcs — <strong>output ACE 2 tertinggi</strong> dalam periode ini.', meta:'Tgl 7 Mei · ACE 2 Kusuma' },
+    { icon:'🔴', cls:'insight-down', text:'Total absensi Kusuma tgl 3–5 mencapai <strong>9 hari kerja</strong>. Berdampak pada output ACE 1.', meta:'Tgl 3–5 Mei · Perlu monitoring' },
+  ];
+  const aInsights = [...insights];
+  const analyticsInsights = [
+    ...insights,
+    { icon:'🔵', cls:'insight-info', text:'Tren output keduaforeman menunjukkan <strong>peningkatan konsisten</strong> dari tgl 3→7 setelah startup awal.', meta:'Trend Analysis' },
+    { icon:'📊', cls:'insight-info', text:'MH Utilization Katun rata-rata <strong>78%</strong>, Kusuma <strong>74.1%</strong>. Peluang optimasi MH Non-Process.', meta:'Man-Power Efficiency' },
+    { icon:'⚡', cls:'insight-warn', text:'NG Rate tertinggi pada tgl 4 (Katun: 5.0%). Investigasi penyebab NG untuk menurunkan waste.', meta:'Quality Analysis · Tgl 4' },
+  ];
+
+  const execEl = document.getElementById('execInsights');
+  const analEl = document.getElementById('analyticsInsights');
+  if(execEl) execEl.innerHTML = insights.slice(0,3).map(i=>`
+    <div class="insight-item">
+      <div class="insight-icon ${i.cls}">${i.icon}</div>
+      <div><div class="insight-text">${i.text}</div><div class="insight-meta">${i.meta}</div></div>
+    </div>`).join('');
+  if(analEl) analEl.innerHTML = analyticsInsights.map(i=>`
+    <div class="insight-item">
+      <div class="insight-icon ${i.cls}">${i.icon}</div>
+      <div><div class="insight-text">${i.text}</div><div class="insight-meta">${i.meta}</div></div>
+    </div>`).join('');
+
+  // Anomaly
+  const anomEl = document.getElementById('anomalyList');
+  if(anomEl) {
+    const anomalies = [
+      { day:'Tgl-3 Kusuma', val:'8,405 vs 23,778', pct:'-64.6%', cls:'status-crit' },
+      { day:'Tgl-2 Katun', val:'1,992 vs 23,778', pct:'-91.6%', cls:'status-crit' },
+      { day:'Tgl-3 Katun', val:'9,807 vs 23,778', pct:'-58.7%', cls:'status-warn' },
+      { day:'Tgl-4 Katun', val:'21,668 vs 23,778', pct:'-8.9%', cls:'status-warn' },
+      { day:'Tgl-5 Katun', val:'23,617 vs 23,778', pct:'-0.7%', cls:'status-on' },
+    ];
+    anomEl.innerHTML = anomalies.map(a=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${a.day}</div>
+          <div style="font-size:10px;color:var(--text-secondary);">${a.val}</div>
+        </div>
+        <span class="status-pill ${a.cls}" style="font-size:10px;">${a.pct}</span>
+      </div>`).join('');
+  }
+}
+
+// ─────────────────────────────────────────────
+// CLOCK
+// ─────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockTime').textContent = now.toLocaleTimeString('id-ID');
+  document.getElementById('clockDate').textContent = now.toLocaleDateString('id-ID',{weekday:'short',year:'numeric',month:'short',day:'numeric'});
+}
+
+// ─────────────────────────────────────────────
+// REFRESH COUNTDOWN
+// ─────────────────────────────────────────────
+let countdown = 30;
+function tickCountdown() {
+  countdown--;
+  document.getElementById('refreshCountdown').textContent = countdown+'s';
+  if(countdown <= 0) {
+    countdown = 30;
+    showNotif('info','Dashboard diperbarui secara otomatis','Realtime refresh');
+  }
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────────
+function applyFilters() {
+  showNotif('info','Filter diterapkan','Dashboard diperbarui');
+}
+function resetFilters() {
+  document.getElementById('fForeman').value='all';
+  document.getElementById('fLine').value='all';
+  document.getElementById('fShift').value='all';
+  document.getElementById('fDate').value='';
+  showNotif('success','Filter direset','Menampilkan semua data');
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+function showNotif(type, message, title='') {
+  const area = document.getElementById('notifArea');
+  const colors = { success:'var(--green)', error:'var(--red)', warn:'var(--orange)', info:'var(--cyan)' };
+  const el = document.createElement('div');
+  el.className = 'notif';
+  el.innerHTML = `
+    <div class="notif-dot" style="background:${colors[type]||colors.info};box-shadow:0 0 6px ${colors[type]||colors.info}"></div>
+    <div><div style="font-weight:600;margin-bottom:2px;color:var(--text-primary);">${title}</div><div style="color:var(--text-secondary)">${message}</div></div>
+    <span class="notif-close" onclick="this.parentElement.remove()">×</span>`;
+  area.appendChild(el);
+  setTimeout(()=>el.style.opacity='0',3500);
+  setTimeout(()=>el.remove(),3800);
+}
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportTableExcel() {
+  const wb = XLSX.utils.book_new();
+  const headers = ['Tanggal','Foreman','Line','Plan','Actual','FG','NG','NG%','Gentani','MH Actual','MH Process','Absensi','Status'];
+  const wsData = [headers, ...tableData];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Monitoring Harian');
+  XLSX.writeFile(wb, 'Finishing_Dashboard_Export.xlsx');
+  showNotif('success','File Excel berhasil diekspor','Export Sukses');
+}
+
+function exportExcel() { exportTableExcel(); }
+
+function printPDF() {
+  showNotif('info','Membuka dialog print PDF...','Export PDF');
+  setTimeout(()=>window.print(), 500);
+}
+
+// ─────────────────────────────────────────────
+// FILE UPLOAD
+// ─────────────────────────────────────────────
+function dragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+function dragLeave(e) { document.getElementById('dropZone').classList.remove('dragover'); }
+function dropFile(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) processUpload(file);
+}
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if(file) processUpload(file);
+}
+function processUpload(file) {
+  const el = document.getElementById('uploadStatus');
+  el.innerHTML = `<div style="padding:12px;background:rgba(0,212,255,0.05);border:1px solid var(--border);border-radius:8px;font-size:12px;margin-top:10px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span>📋</span>
+      <strong>${file.name}</strong>
+      <span style="color:var(--text-secondary)">${(file.size/1024).toFixed(1)} KB</span>
+    </div>
+    <div style="margin-top:8px;color:var(--text-secondary);">File diterima. Parsing data...</div>
+  </div>`;
+  showNotif('success',`File "${file.name}" berhasil diupload`,'Upload Sukses');
+  setTimeout(()=>{
+    el.innerHTML += `<div style="margin-top:8px;padding:10px;background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15);border-radius:8px;font-size:12px;color:var(--green);">✓ Data berhasil diparse. Dashboard akan diperbarui.</div>`;
+  }, 1500);
+}
+function loadCurrentData() { showNotif('success','Data saat ini berhasil dimuat ulang','Reload'); }
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  updateClock();
+  setInterval(updateClock, 1000);
+  setInterval(tickCountdown, 1000);
+  initCharts();
+  buildTableData();
+  generateInsights();
+  setTimeout(()=>showNotif('success','Dashboard berhasil dimuat','System Ready'), 800);
+  setTimeout(()=>showNotif('warn','Gentani Process di bawah target (70%)','Alert: Efisiensi'), 2500);
+});
+</script>
+</body>
+</html>
