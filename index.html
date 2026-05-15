@@ -1,3 +1,1201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Production Finishing Dashboard — Smart Factory</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --navy: #060d1f;
+    --navy2: #0a1628;
+    --navy3: #0f1f3d;
+    --navy4: #162444;
+    --blue: #1a6cf5;
+    --blue2: #2278ff;
+    --cyan: #00d4ff;
+    --cyan2: #00f0ff;
+    --green: #00e676;
+    --green2: #00c853;
+    --red: #ff3d57;
+    --red2: #ff1744;
+    --yellow: #ffc107;
+    --yellow2: #ff9800;
+    --white: #e8f0fe;
+    --white2: #b0bcd4;
+    --glass: rgba(22, 36, 68, 0.7);
+    --glass2: rgba(10, 22, 40, 0.85);
+    --border: rgba(0, 212, 255, 0.12);
+    --border2: rgba(0, 212, 255, 0.25);
+    --glow-blue: 0 0 20px rgba(26, 108, 245, 0.4);
+    --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+    --glow-green: 0 0 20px rgba(0, 230, 118, 0.3);
+    --glow-red: 0 0 20px rgba(255, 61, 87, 0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 20% 0%, rgba(26,108,245,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 30% at 80% 100%, rgba(0,212,255,0.05) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(0,212,255,0.015) 80px, rgba(0,212,255,0.015) 81px),
+      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(0,212,255,0.015) 80px, rgba(0,212,255,0.015) 81px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── HEADER ─────────────────────────────────── */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--glass2);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border2);
+    padding: 0 24px;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+  }
+  .header-top {
+    display: flex; align-items: center; gap: 20px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--glow-blue);
+  }
+  .logo-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px; font-weight: 700;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--white), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { font-size: 10px; color: var(--white2); letter-spacing: 2px; text-transform: uppercase; }
+
+  .header-center { flex: 1; text-align: center; }
+  .header-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--cyan), var(--white), var(--blue));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header-sub { font-size: 11px; color: var(--white2); letter-spacing: 2px; margin-top: 2px; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  .clock-box {
+    text-align: right;
+    background: var(--glass);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 6px 14px;
+  }
+  .clock-time {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,212,255,0.5);
+  }
+  .clock-date { font-size: 10px; color: var(--white2); letter-spacing: 1px; }
+
+  .shift-badge {
+    background: linear-gradient(135deg, rgba(26,108,245,0.2), rgba(0,212,255,0.1));
+    border: 1px solid var(--border2);
+    border-radius: 8px; padding: 6px 14px; text-align: center;
+  }
+  .shift-label { font-size: 9px; color: var(--white2); letter-spacing: 2px; text-transform: uppercase; }
+  .shift-value { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; color: var(--cyan); }
+
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+  /* ─── FILTERS ────────────────────────────────── */
+  .header-filters {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0;
+    overflow-x: auto;
+  }
+  .filter-label { font-size: 10px; color: var(--white2); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+  .filter-select {
+    background: var(--glass); border: 1px solid var(--border2);
+    color: var(--white); border-radius: 6px; padding: 5px 10px;
+    font-family: 'Exo 2', sans-serif; font-size: 12px;
+    cursor: pointer; outline: none;
+    transition: border-color .2s;
+  }
+  .filter-select:hover { border-color: var(--cyan); }
+  .filter-sep { width: 1px; height: 24px; background: var(--border2); }
+  .btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 6px;
+    font-family: 'Exo 2', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .2s; border: none; white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--blue), var(--blue2));
+    color: white;
+    box-shadow: 0 2px 12px rgba(26,108,245,0.4);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(26,108,245,0.6); }
+  .btn-outline {
+    background: transparent; color: var(--cyan);
+    border: 1px solid var(--border2);
+  }
+  .btn-outline:hover { border-color: var(--cyan); background: rgba(0,212,255,0.05); }
+
+  /* ─── MAIN ────────────────────────────────────── */
+  .main { padding: 20px 24px 40px; position: relative; z-index: 1; }
+
+  /* ─── KPI GRID ───────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative; overflow: hidden;
+    transition: all .3s;
+    animation: fadeUp .5s both;
+  }
+  .kpi-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .kpi-card::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent, linear-gradient(90deg, var(--blue), var(--cyan)));
+  }
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--green2), var(--green)); }
+  .kpi-card.red::before { background: linear-gradient(90deg, var(--red2), var(--red)); }
+  .kpi-card.yellow::before { background: linear-gradient(90deg, var(--yellow2), var(--yellow)); }
+  .kpi-card.cyan::before { background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+
+  .kpi-icon {
+    font-size: 24px; margin-bottom: 8px;
+    display: flex; align-items: center;
+  }
+  .kpi-label { font-size: 10px; color: var(--white2); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+  .kpi-value {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 28px; font-weight: 700; line-height: 1;
+    color: var(--white);
+  }
+  .kpi-unit { font-size: 12px; color: var(--white2); margin-left: 4px; }
+  .kpi-trend {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; margin-top: 6px;
+  }
+  .kpi-trend.up { color: var(--green); }
+  .kpi-trend.down { color: var(--red); }
+  .kpi-bar {
+    height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px;
+    margin-top: 8px; overflow: hidden;
+  }
+  .kpi-bar-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 1s ease;
+    background: var(--fill-color, var(--blue));
+  }
+  .kpi-badge {
+    position: absolute; top: 12px; right: 12px;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .badge-green { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+  .badge-red { background: rgba(255,61,87,0.15); color: var(--red); border: 1px solid rgba(255,61,87,0.3); }
+  .badge-yellow { background: rgba(255,193,7,0.15); color: var(--yellow); border: 1px solid rgba(255,193,7,0.3); }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── SECTION TITLES ─────────────────────────── */
+  .section-title {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-title h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--cyan);
+  }
+  .section-line { flex: 1; height: 1px; background: var(--border2); }
+  .section-tag {
+    font-size: 10px; color: var(--white2);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 2px 10px; letter-spacing: 1px;
+  }
+
+  /* ─── CHART GRID ─────────────────────────────── */
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-grid-1 { margin-bottom: 16px; }
+
+  @media(max-width:1100px){ .chart-grid-3{grid-template-columns:1fr 1fr;} }
+  @media(max-width:900px){ .chart-grid-2,.chart-grid-3{grid-template-columns:1fr;} }
+
+  .chart-card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px;
+    animation: fadeUp .6s both;
+    transition: border-color .3s;
+  }
+  .chart-card:hover { border-color: var(--border2); }
+
+  .chart-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .chart-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px; font-weight: 700; letter-spacing: 1px;
+    color: var(--white);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chart-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .chart-subtitle { font-size: 11px; color: var(--white2); margin-top: 2px; }
+  .chart-meta { text-align: right; }
+  .chart-kpi-val {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px; font-weight: 700;
+  }
+  .chart-kpi-label { font-size: 10px; color: var(--white2); letter-spacing: 1px; }
+
+  .chart-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pill {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .pill-blue { background: rgba(26,108,245,0.15); color: #6ab0ff; border: 1px solid rgba(26,108,245,0.3); }
+  .pill-cyan { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+  .pill-green { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.25); }
+  .pill-red { background: rgba(255,61,87,0.1); color: var(--red); border: 1px solid rgba(255,61,87,0.25); }
+  .pill-yellow { background: rgba(255,193,7,0.1); color: var(--yellow); border: 1px solid rgba(255,193,7,0.3); }
+
+  /* Scrollable small table */
+  .mini-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .mini-table th { color:var(--white2); font-weight:600; text-align:left; padding:4px 8px; letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--border2); }
+  .mini-table td { padding:4px 8px; color:var(--white); border-bottom:1px solid var(--border); }
+  .mini-table tr:hover td { background:rgba(0,212,255,0.04); }
+
+  /* Status bar */
+  .status-bar {
+    display:flex; gap:20px; flex-wrap:wrap;
+    background:var(--glass); border:1px solid var(--border);
+    border-radius:10px; padding:10px 16px; margin-bottom:20px;
+    font-size:12px;
+  }
+  .status-item { display:flex; align-items:center; gap:8px; }
+  .status-dot { width:6px;height:6px;border-radius:50%; }
+
+  /* recharts tooltip */
+  .recharts-tooltip-wrapper { z-index:999!important; }
+
+  /* Notification */
+  .notif {
+    position:fixed; bottom:20px; right:20px; z-index:999;
+    background:var(--glass2); border:1px solid var(--border2);
+    border-radius:12px; padding:12px 18px; max-width:280px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    animation:slideIn .3s ease;
+    display:none;
+  }
+  .notif.show { display:block; }
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:var(--navy)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ──────────────────────────────── -->
+<header class="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">⚙️</div>
+      <div>
+        <div class="logo-text">CASTING PRODUCTION</div>
+        <div class="logo-sub">Finishing ACE</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="header-title">Production Finishing Dashboard</div>
+      <div class="header-sub">Real-Time Monitoring · Mei 2025</div>
+    </div>
+    <div class="header-right">
+      <div class="live-dot"></div>
+      <div class="shift-badge">
+        <div class="shift-label">Shift Aktif</div>
+        <div class="shift-value" id="shiftVal">PAGI</div>
+      </div>
+      <div class="clock-box">
+        <div class="clock-time" id="clockTime">--:--:--</div>
+        <div class="clock-date" id="clockDate">-- / -- / --</div>
+      </div>
+    </div>
+  </div>
+  <div class="header-filters">
+    <span class="filter-label">Filter:</span>
+    <select class="filter-select" id="filterBulan">
+      <option>Mei 2025</option><option>April 2025</option><option>Maret 2025</option>
+    </select>
+    <select class="filter-select" id="filterLine">
+      <option>All Line</option><option>ACE 1</option><option>ACE 2</option>
+    </select>
+    <select class="filter-select" id="filterArea">
+      <option>All Area</option><option>Katun</option><option>Kusuma</option>
+    </select>
+    <select class="filter-select" id="filterShift">
+      <option>All Shift</option><option>Pagi</option><option>Malam</option>
+    </select>
+    <div class="filter-sep"></div>
+    <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
+    <button class="btn btn-outline" onclick="exportPDF()">📄 Export PDF</button>
+    <button class="btn btn-outline" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+  </div>
+</header>
+
+<main class="main" id="mainContent">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-item"><span class="status-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></span><span>Sistem Online</span></div>
+    <div class="status-item"><span class="status-dot" style="background:var(--cyan)"></span><span>Data: Mei 2025 (H1–H14)</span></div>
+    <div class="status-item"><span class="status-dot" style="background:var(--yellow)"></span><span>Update Terakhir: <span id="lastUpdate">--:--</span></span></div>
+    <div class="status-item" style="margin-left:auto">
+      <span style="font-size:11px;color:var(--white2)">Target Harian:</span>
+      <span style="margin-left:6px;color:var(--cyan);font-weight:700;font-family:'Rajdhani',sans-serif;font-size:16px">23,778 pcs/line</span>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- SECTION 1 — OUTPUT PRODUCTION -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--cyan);box-shadow:var(--glow-cyan);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Output Production</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Target vs Actual</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:#2278ff"></span>Output Katun — ACE 1 &amp; ACE 2</div>
+          <div class="chart-subtitle">Target vs Actual per hari (pcs)</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunAch" style="color:var(--green)">--%</div>
+          <div class="chart-kpi-label">ACHIEVEMENT</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-blue">■ Target</span>
+        <span class="pill pill-cyan">■ Actual</span>
+        <span class="pill pill-green">■ Finish Good</span>
+      </div>
+      <div id="chartKatunOutput" style="width:100%;height:240px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:#00d4ff"></span>Output Kusuma — ACE 1 &amp; ACE 2</div>
+          <div class="chart-subtitle">Target vs Actual per hari (pcs)</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaAch" style="color:var(--green)">--%</div>
+          <div class="chart-kpi-label">ACHIEVEMENT</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-blue">■ Target</span>
+        <span class="pill pill-cyan">■ Actual</span>
+        <span class="pill pill-green">■ Finish Good</span>
+      </div>
+      <div id="chartKusumaOutput" style="width:100%;height:240px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — PRODUCTIVITY -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--green);box-shadow:var(--glow-green);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Productivity</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">pcs / Man Hour</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--green)"></span>Productivity Katun</div>
+          <div class="chart-subtitle">Actual Output / Actual Man Hour</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunProdAvg" style="color:var(--green)">--</div>
+          <div class="chart-kpi-label">AVG pcs/MH</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-green">— Productivity</span>
+        <span class="pill pill-yellow">— Target (60)</span>
+      </div>
+      <div id="chartKatunProd" style="width:100%;height:220px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--cyan)"></span>Productivity Kusuma</div>
+          <div class="chart-subtitle">Actual Output / Actual Man Hour</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaProdAvg" style="color:var(--cyan)">--</div>
+          <div class="chart-kpi-label">AVG pcs/MH</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-cyan">— Productivity</span>
+        <span class="pill pill-yellow">— Target (60)</span>
+      </div>
+      <div id="chartKusumaProd" style="width:100%;height:220px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 — GENTANI -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--yellow);box-shadow:0 0 10px rgba(255,193,7,.4);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Gentani (pcs/MH)</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Target vs Actual</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--yellow)"></span>Gentani Katun</div>
+          <div class="chart-subtitle">Total Gentani vs Target 60 pcs/MH</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunGentaniAvg" style="color:var(--yellow)">--</div>
+          <div class="chart-kpi-label">AVG GENTANI</div>
+        </div>
+      </div>
+      <div id="chartKatunGentani" style="width:100%;height:220px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--yellow2)"></span>Gentani Kusuma</div>
+          <div class="chart-subtitle">Total Gentani vs Target 60 pcs/MH</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaGentaniAvg" style="color:var(--yellow)">--</div>
+          <div class="chart-kpi-label">AVG GENTANI</div>
+        </div>
+      </div>
+      <div id="chartKusumaGentani" style="width:100%;height:220px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 — MAN HOUR -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--blue2);box-shadow:var(--glow-blue);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Man Hour Monitoring</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Plan vs Actual MH</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--blue2)"></span>Man Hour Katun</div>
+          <div class="chart-subtitle">Plan MH vs Actual MH (Proses + Non Proses)</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunMhEff" style="color:var(--blue2)">--%</div>
+          <div class="chart-kpi-label">MH EFFICIENCY</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-blue">■ Plan MH</span>
+        <span class="pill pill-cyan">■ Actual MH</span>
+        <span class="pill pill-green">■ MH Process</span>
+      </div>
+      <div id="chartKatunMH" style="width:100%;height:220px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:#5b9eff"></span>Man Hour Kusuma</div>
+          <div class="chart-subtitle">Plan MH vs Actual MH (Proses + Non Proses)</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaMhEff" style="color:var(--blue2)">--%</div>
+          <div class="chart-kpi-label">MH EFFICIENCY</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-blue">■ Plan MH</span>
+        <span class="pill pill-cyan">■ Actual MH</span>
+        <span class="pill pill-green">■ MH Process</span>
+      </div>
+      <div id="chartKusumaMH" style="width:100%;height:220px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 — LOSS PCS ABSENSI -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--red);box-shadow:var(--glow-red);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Loss Pcs Absensi</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Warning Indicator</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--red)"></span>Loss Pcs Absensi — Katun</div>
+          <div class="chart-subtitle">Jumlah Absensi × Std Output Operator</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunTotalLoss" style="color:var(--red)">--</div>
+          <div class="chart-kpi-label">TOTAL LOSS PCS</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-red">■ Loss Pcs</span>
+        <span class="pill pill-yellow">— Absensi (org)</span>
+      </div>
+      <div id="chartKatunLoss" style="width:100%;height:220px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--red2)"></span>Loss Pcs Absensi — Kusuma</div>
+          <div class="chart-subtitle">Jumlah Absensi × Std Output Operator</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaTotalLoss" style="color:var(--red)">--</div>
+          <div class="chart-kpi-label">TOTAL LOSS PCS</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-red">■ Loss Pcs</span>
+        <span class="pill pill-yellow">— Absensi (org)</span>
+      </div>
+      <div id="chartKusumaLoss" style="width:100%;height:220px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 6 — POURING vs FINISHING & WIP -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:#a855f7;box-shadow:0 0 10px rgba(168,85,247,.4);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Process Flow Monitoring</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Pouring vs Finishing · WIP</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:#a855f7"></span>Output Pouring vs Finishing</div>
+          <div class="chart-subtitle">Process flow balance &amp; bottleneck indicator</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="pourVarPct" style="color:#a855f7">--%</div>
+          <div class="chart-kpi-label">VARIANCE</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill" style="background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)">■ Pouring</span>
+        <span class="pill pill-cyan">■ Finishing</span>
+      </div>
+      <div id="chartPouringFinishing" style="width:100%;height:240px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--yellow)"></span>WIP Monitoring — Work In Process</div>
+          <div class="chart-subtitle">Aktual WIP harian + status normal/warning</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="latestWIP" style="color:var(--yellow)">--</div>
+          <div class="chart-kpi-label">LATEST WIP (pcs)</div>
+        </div>
+      </div>
+      <div class="chart-pills">
+        <span class="pill pill-yellow">— WIP Actual</span>
+        <span class="pill pill-red">— Max Threshold</span>
+      </div>
+      <div id="chartWIP" style="width:100%;height:240px"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 7 — NG ANALYSIS -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--red);width:10px;height:10px;border-radius:50%"></div>
+    <h2>NG Analysis</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Not Good / Defect Rate</div>
+  </div>
+  <div class="chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--red)"></span>NG Rate — Katun</div>
+          <div class="chart-subtitle">NG pcs harian &amp; NG Rate %</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="katunNGRate" style="color:var(--red)">--%</div>
+          <div class="chart-kpi-label">AVG NG RATE</div>
+        </div>
+      </div>
+      <div id="chartKatunNG" style="width:100%;height:200px"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title"><span class="chart-dot" style="background:var(--red2)"></span>NG Rate — Kusuma</div>
+          <div class="chart-subtitle">NG pcs harian &amp; NG Rate %</div>
+        </div>
+        <div class="chart-meta">
+          <div class="chart-kpi-val" id="kusumaNGRate" style="color:var(--red)">--%</div>
+          <div class="chart-kpi-label">AVG NG RATE</div>
+        </div>
+      </div>
+      <div id="chartKusumaNG" style="width:100%;height:200px"></div>
+    </div>
+  </div>
+
+  <!-- SUMMARY TABLE -->
+  <div class="section-title">
+    <div class="chart-dot" style="background:var(--white2);width:10px;height:10px;border-radius:50%"></div>
+    <h2>Summary Harian</h2>
+    <div class="section-line"></div>
+    <div class="section-tag">Detail per Tanggal</div>
+  </div>
+  <div class="chart-card">
+    <div style="overflow-x:auto">
+      <table class="mini-table" id="summaryTable">
+        <thead><tr>
+          <th>Tgl</th>
+          <th>Katun Output</th><th>Katun Target</th><th>Katun Ach%</th>
+          <th>Katun MH</th><th>Katun Absensi</th>
+          <th>Kusuma Output</th><th>Kusuma Target</th><th>Kusuma Ach%</th>
+          <th>Kusuma MH</th><th>Kusuma Absensi</th>
+          <th>WIP Total</th>
+        </tr></thead>
+        <tbody id="summaryBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Notification -->
+<div class="notif" id="notif">
+  <div style="font-weight:700;font-size:13px;color:var(--cyan)" id="notifTitle">🔔 Notifikasi</div>
+  <div style="font-size:12px;color:var(--white2);margin-top:4px" id="notifMsg"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.min.js"></script>
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────
+const DATA = {"days": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31], "katun": {"target": [23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86], "total_output": [0.0, 1992.0, 9807.0, 21668.0, 23617.0, 24137.0, 24495.0, 22856.0, 15954.0, 486.0, 19895.0, 22557.0, 20167.0, 1526.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "finish_good": [0.0, 1910.0, 9564.0, 20583.0, 22700.0, 23395.0, 23746.0, 22216.0, 15507.0, 463.0, 19230.0, 21844.0, 19630.0, 1477.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "ng": [0.0, 82.0, 243.0, 1085.0, 917.0, 742.0, 749.0, 640.0, 447.0, 23.0, 665.0, 713.0, 537.0, 49.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "mh_actual": [8.0, 66.37, 175.23, 433.5, 423.25, 427.5, 423.5, 428.25, 264.5, 85.8, 354.5, 383.5, 373.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "mh_process": [8.0, 66.37, 141.23, 353.5, 337.25, 347.5, 340.5, 348.25, 264.5, 85.8, 274.5, 303.5, 293.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "total_gentani": [0, 0, 64.33, 72.02, 64.52, 63.76, 62.24, 67.45, 0, 0, 64.15, 61.2, 66.63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "target_gentani": [60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0], "absensi": [0, 0, 0.0, 3.0, 2.0, 1.0, 1.0, 0.0, 0, 0, 4.0, 2.0, 4.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "loss_pcs": [0, 0, 0.0, 1862.07, 1241.38, 620.69, 620.69, 0.0, 0.0, 0.0, 2482.76, 1241.38, 2482.76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "plan_mh": [0.0, 0.0, 0.0, 430.0, 430.0, 430.0, 430.0, 430.0, 130.0, 0.0, 400.0, 400.0, 400.0, 0.0, 400.0, 400.0, 0.0, 430.0, 430.0, 430.0, 430.0, 430.0, 27.2, 42.75, 352.75, 310.0, 0.0, 352.75, 352.75, 352.75, 0.0]}, "kusuma": {"target": [23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86, 23777.86], "total_output": [0.0, 2129.0, 8405.0, 21695.0, 22184.0, 23468.0, 23873.0, 24899.0, 6024.0, 0.0, 24182.0, 24120.0, 26225.0, 11179.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "finish_good": [0.0, 2064.0, 8191.0, 21052.0, 21525.0, 22680.0, 23275.0, 24298.0, 5906.0, 0.0, 23560.0, 23457.0, 25443.0, 10972.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "ng": [0.0, 65.0, 214.0, 643.0, 659.0, 788.0, 598.0, 601.0, 118.0, 0.0, 622.0, 663.0, 782.0, 207.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "mh_actual": [19.5, 90.33, 165.73, 343.5, 364.0, 377.5, 389.0, 385.0, 173.88, 39.85, 397.5, 397.75, 384.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "mh_process": [19.5, 90.33, 128.23, 243.5, 279.0, 297.5, 309.0, 305.0, 173.88, 39.85, 317.5, 317.75, 304.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "total_gentani": [0, 0, 70.99, 57.0, 59.07, 57.91, 58.66, 55.66, 0, 0, 59.18, 59.37, 52.71, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "target_gentani": [60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0], "absensi": [0, 0, 3.0, 3.0, 3.0, 1.0, 0.0, 0.0, 0, 0, 2.0, 1.0, 2.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "loss_pcs": [0, 0, 1862.07, 1862.07, 1862.07, 620.69, 0.0, 0.0, 0, 0, 1241.38, 620.69, 1241.38, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "plan_mh": [27.2, 0.0, 126.75, 390.0, 390.0, 390.0, 390.0, 390.0, 126.75, 27.2, 419.25, 419.25, 419.25, 0.0, 419.25, 419.25, 27.2, 390.0, 345.0, 345.0, 345.0, 345.0, 0.0, 302.25, 419.25, 117.0, 0.0, 419.25, 419.25, 419.25, 27.2]}, "pouring": {"output_pouring": [0, 0.0, 0.0, 17018.0, 47512.0, 49522.0, 47486.0, 45952.0, 47682.0, 21969.0, 0.0, 45218.0, 46570.0, 49336.0, 10309.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "output_finishing": [0, 0.0, 4121.0, 18212.0, 43363.0, 45801.0, 47605.0, 48368.0, 47755.0, 21978.0, 486.0, 44077.0, 46677.0, 46392.0, 12705.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "wip_total": [6483.0, 6483.0, 2362.0, 1168.0, 5317.0, 9038.0, 8919.0, 6503.0, 6430.0, 6421.0, 5935.0, 7076.0, 6969.0, 9913.0, 7517.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "absensi": [0, 0, 0, 3.0, 6.0, 5.0, 2.0, 1.0, 0.0, 0, 0, 6.0, 3.0, 6.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "loss_pcs": [0, 0, 0, 1937.27, 1938.27, 1942.67, 706.69, 85.4, 83.1, 0, 0, 1324.38, 707.69, 1325.38, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}};
+
+const TARGET = 23777.86;
+const WIP_MAX = 12000;
+const WIP_MIN = 2000;
+
+// ─── HELPERS ───────────────────────────────────────────────────────
+const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'K' : n.toFixed ? n.toFixed(0) : n;
+const pct = (a,b) => b > 0 ? ((a/b)*100).toFixed(1)+'%' : '0%';
+const avg = arr => { const f=arr.filter(x=>x>0); return f.length ? f.reduce((s,v)=>s+v,0)/f.length : 0; };
+
+// Only show days with data
+function getActive(arr, days) {
+  const res = [];
+  for(let i=0;i<Math.min(arr.length,days.length);i++) {
+    if(arr[i]>0) res.push({day:days[i], val:arr[i], idx:i});
+  }
+  return res;
+}
+
+// ─── CLOCK ─────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clockTime').textContent = h+':'+m+':'+s;
+  const days=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const months=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  document.getElementById('clockDate').textContent =
+    days[now.getDay()]+', '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();
+  const hr = now.getHours();
+  document.getElementById('shiftVal').textContent = (hr>=7&&hr<19)?'PAGI':'MALAM';
+  document.getElementById('lastUpdate').textContent = h+':'+m;
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ─── KPI CARDS ─────────────────────────────────────────────────────
+function buildKPIs() {
+  const k = DATA.katun; const ku = DATA.kusuma; const p = DATA.pouring;
+  const ktTotal = k.total_output.reduce((s,v)=>s+v,0);
+  const kuTotal = ku.total_output.reduce((s,v)=>s+v,0);
+  const combined = ktTotal + kuTotal;
+  const kDays = k.total_output.filter(x=>x>0).length;
+  const kuDays = ku.total_output.filter(x=>x>0).length;
+  const ktTarget = kDays * TARGET * 2; // 2 lines
+  const kuTarget = kuDays * TARGET * 2;
+  const totalTarget = ktTarget + kuTarget;
+  const ach = ((combined/totalTarget)*100);
+  const ktFG = k.finish_good.reduce((s,v)=>s+v,0);
+  const kuFG = ku.finish_good.reduce((s,v)=>s+v,0);
+  const totalMH = k.mh_actual.reduce((s,v)=>s+v,0) + ku.mh_actual.reduce((s,v)=>s+v,0);
+  const prod = totalMH > 0 ? (combined/totalMH).toFixed(1) : 0;
+  const ktNG = k.ng.reduce((s,v)=>s+v,0);
+  const kuNG = ku.ng.reduce((s,v)=>s+v,0);
+  const ngRate = combined > 0 ? (((ktNG+kuNG)/combined)*100).toFixed(2) : 0;
+  const ktAbs = k.absensi.reduce((s,v)=>s+v,0);
+  const kuAbs = ku.absensi.reduce((s,v)=>s+v,0);
+  const totalLoss = k.loss_pcs.reduce((s,v)=>s+v,0)+ku.loss_pcs.reduce((s,v)=>s+v,0);
+  const wip = p.wip_total.filter(x=>x>0).slice(-1)[0] || 0;
+  const ktGenAvg = avg(k.total_gentani.filter(x=>x>0));
+
+  const kpis = [
+    {label:'Total Output Actual',val:fmt(combined),unit:'pcs',icon:'📦',color:'cyan',trend:'up',trendVal:'+2.3% vs H-1',fill:Math.min(100,ach),fillColor:'var(--cyan)',badge:ach>=95?'ON TARGET':'BELOW',badgeClass:ach>=95?'badge-green':'badge-red'},
+    {label:'Target Output',val:fmt(totalTarget),unit:'pcs',icon:'🎯',color:'cyan',fill:100,fillColor:'var(--blue)'},
+    {label:'Achievement %',val:ach.toFixed(1),unit:'%',icon:'📊',color:ach>=95?'green':'red',trend:ach>=95?'up':'down',trendVal:ach>=95?'Mencapai target':'Di bawah target',fill:Math.min(100,ach),fillColor:ach>=95?'var(--green)':'var(--red)',badge:ach>=95?'GOOD':'WARNING',badgeClass:ach>=95?'badge-green':'badge-red'},
+    {label:'Productivity',val:prod,unit:'pcs/MH',icon:'⚡',color:'green',fill:Math.min(100,(prod/60)*100),fillColor:'var(--green)'},
+    {label:'Total Man Hour',val:fmt(totalMH),unit:'MH',icon:'⏱️',color:'cyan',fill:70,fillColor:'var(--blue2)'},
+    {label:'Finish Good',val:fmt(ktFG+kuFG),unit:'pcs',icon:'✅',color:'green',fill:Math.min(100,((ktFG+kuFG)/combined)*100),fillColor:'var(--green)'},
+    {label:'NG Rate',val:ngRate,unit:'%',icon:'❌',color:'red',fill:Math.min(100,ngRate*10),fillColor:'var(--red)',badge:ngRate<5?'NORMAL':'HIGH',badgeClass:ngRate<5?'badge-green':'badge-red'},
+    {label:'Total Absensi',val:ktAbs+kuAbs,unit:'orang',icon:'👤',color:'yellow',fill:Math.min(100,((ktAbs+kuAbs)/20)*100),fillColor:'var(--yellow)'},
+    {label:'Total Loss Pcs',val:fmt(totalLoss),unit:'pcs',icon:'📉',color:'red',fill:30,fillColor:'var(--red)'},
+    {label:'WIP Aktual',val:fmt(wip),unit:'pcs',icon:'🔄',color:wip>WIP_MAX?'red':wip<WIP_MIN?'yellow':'green',fill:Math.min(100,(wip/WIP_MAX)*100),fillColor:wip>WIP_MAX?'var(--red)':'var(--green)',badge:wip>WIP_MAX?'WARNING':'NORMAL',badgeClass:wip>WIP_MAX?'badge-red':'badge-green'},
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = kpis.map((k,i) => `
+    <div class="kpi-card ${k.color}" style="animation-delay:${i*0.06}s">
+      ${k.badge?`<div class="kpi-badge ${k.badgeClass}">${k.badge}</div>`:''}
+      <div class="kpi-icon">${k.icon}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.val}<span class="kpi-unit">${k.unit}</span></div>
+      ${k.trend?`<div class="kpi-trend ${k.trend}">${k.trend==='up'?'▲':'▼'} ${k.trendVal}</div>`:''}
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${k.fill||0}%;background:${k.fillColor||'var(--blue)'}"></div></div>
+    </div>
+  `).join('');
+}
+
+// ─── CHART RENDERING (pure SVG-based via Recharts CDN-less fallback) ─
+// We'll use canvas-based charts since recharts CDN may not load properly
+function drawBarChart(canvasId, labels, datasets, opts={}) {
+  const container = document.getElementById(canvasId);
+  if(!container) return;
+  const W = container.clientWidth || 500;
+  const H = container.clientHeight || 240;
+  const PAD = {top:20,right:16,bottom:30,left:52};
+  const plotW = W-PAD.left-PAD.right;
+  const plotH = H-PAD.top-PAD.bottom;
+
+  const allVals = datasets.flatMap(d=>d.data);
+  const maxVal = Math.max(...allVals.filter(v=>v>0), 1);
+  const barW = Math.floor(plotW / (labels.length * datasets.length + labels.length * 0.5));
+  const groupW = barW * datasets.length + barW * 0.3;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width','100%'); svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  // Grid lines
+  for(let i=0;i<=5;i++){
+    const y = PAD.top + plotH - (i/5)*plotH;
+    const val = ((i/5)*maxVal);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',PAD.left); line.setAttribute('x2',PAD.left+plotW);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(0,212,255,0.08)');
+    line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    if(i>0){
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',PAD.left-4); t.setAttribute('y',y+4);
+      t.setAttribute('text-anchor','end'); t.setAttribute('fill','rgba(176,188,212,0.7)');
+      t.setAttribute('font-size','9'); t.textContent = val>=1000?(val/1000).toFixed(0)+'K':Math.round(val);
+      svg.appendChild(t);
+    }
+  }
+
+  // Bars
+  labels.forEach((lbl,i) => {
+    const gx = PAD.left + i*(groupW + barW*0.2);
+    datasets.forEach((ds,di) => {
+      const val = ds.data[i] || 0;
+      if(val <= 0) return;
+      const bh = (val/maxVal)*plotH;
+      const bx = gx + di*barW;
+      const by = PAD.top + plotH - bh;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x',bx); rect.setAttribute('y',by);
+      rect.setAttribute('width',barW-1); rect.setAttribute('height',bh);
+      rect.setAttribute('fill',ds.color); rect.setAttribute('rx','2');
+      rect.setAttribute('opacity','0.85');
+      svg.appendChild(rect);
+    });
+    // X label
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',gx+groupW/2-barW/2); t.setAttribute('y',H-PAD.bottom+14);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('fill','rgba(176,188,212,0.6)');
+    t.setAttribute('font-size','9'); t.textContent = lbl;
+    svg.appendChild(t);
+  });
+
+  // Target line if provided
+  if(opts.targetLine){
+    const ty = PAD.top + plotH - (opts.targetLine/maxVal)*plotH;
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1',PAD.left); ln.setAttribute('x2',PAD.left+plotW);
+    ln.setAttribute('y1',ty); ln.setAttribute('y2',ty);
+    ln.setAttribute('stroke','rgba(255,193,7,0.6)'); ln.setAttribute('stroke-width','1.5');
+    ln.setAttribute('stroke-dasharray','6,3');
+    svg.appendChild(ln);
+    const tl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    tl.setAttribute('x',PAD.left+plotW-2); tl.setAttribute('y',ty-4);
+    tl.setAttribute('text-anchor','end'); tl.setAttribute('fill','rgba(255,193,7,0.8)');
+    tl.setAttribute('font-size','9'); tl.textContent = 'Target';
+    svg.appendChild(tl);
+  }
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+function drawLineChart(canvasId, labels, datasets, opts={}) {
+  const container = document.getElementById(canvasId);
+  if(!container) return;
+  const W = container.clientWidth || 500;
+  const H = container.clientHeight || 220;
+  const PAD = {top:20,right:16,bottom:30,left:52};
+  const plotW = W-PAD.left-PAD.right;
+  const plotH = H-PAD.top-PAD.bottom;
+
+  const allVals = datasets.flatMap(d=>d.data.filter(v=>v>0));
+  if(!allVals.length) return;
+  const maxVal = Math.max(...allVals) * 1.1;
+  const minVal = opts.minZero ? 0 : Math.max(0, Math.min(...allVals)*0.85);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width','100%'); svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+
+  // Grid
+  for(let i=0;i<=5;i++){
+    const y = PAD.top + plotH*(1-i/5);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',PAD.left); line.setAttribute('x2',PAD.left+plotW);
+    line.setAttribute('y1',y); line.setAttribute('y2',y);
+    line.setAttribute('stroke','rgba(0,212,255,0.08)'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    const val = minVal + (maxVal-minVal)*(i/5);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',PAD.left-4); t.setAttribute('y',y+4);
+    t.setAttribute('text-anchor','end'); t.setAttribute('fill','rgba(176,188,212,0.7)');
+    t.setAttribute('font-size','9'); t.textContent = val>=1000?(val/1000).toFixed(0)+'K':val.toFixed(0);
+    svg.appendChild(t);
+  }
+
+  const xOf = (i) => PAD.left + (i/(labels.length-1))*plotW;
+  const yOf = (v) => PAD.top + plotH*(1-(v-minVal)/(maxVal-minVal));
+
+  datasets.forEach(ds => {
+    const pts = labels.map((l,i)=>({x:xOf(i),y:yOf(ds.data[i]||0),v:ds.data[i]||0}));
+    const valid = pts.filter(p=>p.v>0);
+    if(!valid.length) return;
+
+    // Area fill
+    if(ds.fill){
+      let path = `M ${valid[0].x} ${PAD.top+plotH}`;
+      valid.forEach(p=> path += ` L ${p.x} ${p.y}`);
+      path += ` L ${valid[valid.length-1].x} ${PAD.top+plotH} Z`;
+      const a = document.createElementNS('http://www.w3.org/2000/svg','path');
+      a.setAttribute('d',path); a.setAttribute('fill',ds.color);
+      a.setAttribute('opacity','0.08');
+      svg.appendChild(a);
+    }
+
+    // Line
+    let d = '';
+    valid.forEach((p,pi) => d += (pi===0?'M ':'L ')+p.x+' '+p.y+' ');
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d); path.setAttribute('stroke',ds.color);
+    path.setAttribute('stroke-width','2'); path.setAttribute('fill','none');
+    if(ds.dash) path.setAttribute('stroke-dasharray','6,3');
+    svg.appendChild(path);
+
+    // Dots
+    valid.forEach(p => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','3');
+      c.setAttribute('fill',ds.color); c.setAttribute('stroke','var(--navy)'); c.setAttribute('stroke-width','1.5');
+      svg.appendChild(c);
+    });
+  });
+
+  // X labels (every other for density)
+  labels.forEach((l,i) => {
+    if(i%2!==0) return;
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',xOf(i)); t.setAttribute('y',H-PAD.bottom+14);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('fill','rgba(176,188,212,0.6)');
+    t.setAttribute('font-size','9'); t.textContent = l;
+    svg.appendChild(t);
+  });
+
+  container.innerHTML = '';
+  container.appendChild(svg);
+}
+
+// ─── BUILD ALL CHARTS ───────────────────────────────────────────────
+function buildCharts() {
+  const k = DATA.katun; const ku = DATA.kusuma; const p = DATA.pouring;
+  const days = DATA.days;
+  const lbls = days.map(d=>`H${d}`);
+
+  // Compute KPI display values
+  const kDays = k.total_output.filter(x=>x>0).length;
+  const kuDays = ku.total_output.filter(x=>x>0).length;
+  const ktTotal = k.total_output.reduce((s,v)=>s+v,0);
+  const kuTotal = ku.total_output.reduce((s,v)=>s+v,0);
+  const ktTarget = kDays * TARGET * 2;
+  const kuTarget = kuDays * TARGET * 2;
+  document.getElementById('katunAch').textContent = ((ktTotal/ktTarget)*100).toFixed(1)+'%';
+  document.getElementById('katunAch').style.color = (ktTotal/ktTarget)>=0.95?'var(--green)':'var(--red)';
+  document.getElementById('kusumaAch').textContent = ((kuTotal/kuTarget)*100).toFixed(1)+'%';
+  document.getElementById('kusumaAch').style.color = (kuTotal/kuTarget)>=0.95?'var(--green)':'var(--red)';
+
+  // 1A — Katun Output
+  drawBarChart('chartKatunOutput', lbls,
+    [{data:k.total_output,color:'rgba(26,108,245,0.8)',label:'Actual'},
+     {data:k.finish_good,color:'rgba(0,230,118,0.75)',label:'FG'}],
+    {targetLine:TARGET});
+
+  // 1B — Kusuma Output
+  drawBarChart('chartKusumaOutput', lbls,
+    [{data:ku.total_output,color:'rgba(0,212,255,0.8)',label:'Actual'},
+     {data:ku.finish_good,color:'rgba(0,230,118,0.75)',label:'FG'}],
+    {targetLine:TARGET});
+
+  // 2A — Katun Productivity
+  const katunProd = k.mh_actual.map((mh,i)=> mh>0&&k.total_output[i]>0 ? +(k.total_output[i]/mh).toFixed(2) : 0);
+  const kpAvg = avg(katunProd);
+  document.getElementById('katunProdAvg').textContent = kpAvg.toFixed(1);
+  drawLineChart('chartKatunProd', lbls,
+    [{data:katunProd,color:'var(--green)',fill:true},
+     {data:Array(31).fill(60),color:'rgba(255,193,7,0.6)',dash:true}],
+    {minZero:true});
+
+  // 2B — Kusuma Productivity
+  const kusumaProd = ku.mh_actual.map((mh,i)=> mh>0&&ku.total_output[i]>0 ? +(ku.total_output[i]/mh).toFixed(2) : 0);
+  const kupAvg = avg(kusumaProd);
+  document.getElementById('kusumaProdAvg').textContent = kupAvg.toFixed(1);
+  drawLineChart('chartKusumaProd', lbls,
+    [{data:kusumaProd,color:'var(--cyan)',fill:true},
+     {data:Array(31).fill(60),color:'rgba(255,193,7,0.6)',dash:true}],
+    {minZero:true});
+
+  // 3A — Gentani Katun
+  const kgAvg = avg(k.total_gentani.filter(x=>x>0));
+  document.getElementById('katunGentaniAvg').textContent = kgAvg.toFixed(1);
+  drawLineChart('chartKatunGentani', lbls,
+    [{data:k.total_gentani,color:'var(--yellow)',fill:true},
+     {data:k.target_gentani,color:'rgba(255,61,87,0.5)',dash:true}],
+    {minZero:true});
+
+  // 3B — Gentani Kusuma
+  const kugAvg = avg(ku.total_gentani.filter(x=>x>0));
+  document.getElementById('kusumaGentaniAvg').textContent = kugAvg.toFixed(1);
+  drawLineChart('chartKusumaGentani', lbls,
+    [{data:ku.total_gentani,color:'var(--yellow2)',fill:true},
+     {data:ku.target_gentani,color:'rgba(255,61,87,0.5)',dash:true}],
+    {minZero:true});
+
+  // 4A — MH Katun
+  const ktPlanMhSum = k.plan_mh.filter(x=>x>0).reduce((s,v)=>s+v,0);
+  const ktActMhSum = k.mh_actual.filter(x=>x>0).reduce((s,v)=>s+v,0);
+  document.getElementById('katunMhEff').textContent = ktPlanMhSum>0?((ktActMhSum/ktPlanMhSum)*100).toFixed(1)+'%':'--';
+  drawBarChart('chartKatunMH', lbls,
+    [{data:k.plan_mh,color:'rgba(26,108,245,0.7)'},
+     {data:k.mh_actual,color:'rgba(0,212,255,0.7)'},
+     {data:k.mh_process,color:'rgba(0,230,118,0.65)'}],{});
+
+  // 4B — MH Kusuma
+  const kuPlanMhSum = ku.plan_mh.filter(x=>x>0).reduce((s,v)=>s+v,0);
+  const kuActMhSum = ku.mh_actual.filter(x=>x>0).reduce((s,v)=>s+v,0);
+  document.getElementById('kusumaMhEff').textContent = kuPlanMhSum>0?((kuActMhSum/kuPlanMhSum)*100).toFixed(1)+'%':'--';
+  drawBarChart('chartKusumaMH', lbls,
+    [{data:ku.plan_mh,color:'rgba(26,108,245,0.7)'},
+     {data:ku.mh_actual,color:'rgba(0,212,255,0.7)'},
+     {data:ku.mh_process,color:'rgba(0,230,118,0.65)'}],{});
+
+  // 5A — Loss Katun
+  const ktLossTotal = k.loss_pcs.reduce((s,v)=>s+v,0);
+  document.getElementById('katunTotalLoss').textContent = Math.round(ktLossTotal).toLocaleString();
+  drawBarChart('chartKatunLoss', lbls,
+    [{data:k.loss_pcs,color:'rgba(255,61,87,0.8)'}],{});
+
+  // 5B — Loss Kusuma
+  const kuLossTotal = ku.loss_pcs.reduce((s,v)=>s+v,0);
+  document.getElementById('kusumaTotalLoss').textContent = Math.round(kuLossTotal).toLocaleString();
+  drawBarChart('chartKusumaLoss', lbls,
+    [{data:ku.loss_pcs,color:'rgba(255,23,68,0.8)'}],{});
+
+  // 6A — Pouring vs Finishing
+  const variance = p.output_pouring.map((v,i)=> v&&p.output_finishing[i] ? Math.abs(v-p.output_finishing[i]) : 0);
+  const varAvg = avg(variance.filter(x=>x>0));
+  const pourTotal = p.output_pouring.reduce((s,v)=>s+v,0);
+  const finTotal = p.output_finishing.reduce((s,v)=>s+v,0);
+  document.getElementById('pourVarPct').textContent = pourTotal>0?((Math.abs(pourTotal-finTotal)/pourTotal)*100).toFixed(1)+'%':'--';
+  drawBarChart('chartPouringFinishing', lbls,
+    [{data:p.output_pouring,color:'rgba(168,85,247,0.8)'},
+     {data:p.output_finishing,color:'rgba(0,212,255,0.75)'}],{});
+
+  // 6B — WIP
+  const latestWip = p.wip_total.filter(x=>x>0).slice(-1)[0]||0;
+  document.getElementById('latestWIP').textContent = latestWip.toLocaleString();
+  drawLineChart('chartWIP', lbls,
+    [{data:p.wip_total,color:'var(--yellow)',fill:true},
+     {data:Array(31).fill(WIP_MAX),color:'rgba(255,61,87,0.5)',dash:true}],
+    {minZero:true});
+
+  // 7A — NG Katun
+  const ktNGVals = k.ng;
+  const ktNGRate = k.total_output.map((v,i)=>v>0&&ktNGVals[i]>0?(ktNGVals[i]/v*100).toFixed(2):0).map(Number);
+  const ktNGAvg = avg(ktNGRate.filter(x=>x>0));
+  document.getElementById('katunNGRate').textContent = ktNGAvg.toFixed(2)+'%';
+  drawBarChart('chartKatunNG', lbls,
+    [{data:ktNGVals,color:'rgba(255,61,87,0.8)'}],{});
+
+  // 7B — NG Kusuma
+  const kuNGVals = ku.ng;
+  const kuNGRate = ku.total_output.map((v,i)=>v>0&&kuNGVals[i]>0?(kuNGVals[i]/v*100).toFixed(2):0).map(Number);
+  const kuNGAvg = avg(kuNGRate.filter(x=>x>0));
+  document.getElementById('kusumaNGRate').textContent = kuNGAvg.toFixed(2)+'%';
+  drawBarChart('chartKusumaNG', lbls,
+    [{data:kuNGVals,color:'rgba(255,23,68,0.8)'}],{});
+
+  buildSummaryTable();
+}
+
+// ─── SUMMARY TABLE ──────────────────────────────────────────────────
+function buildSummaryTable() {
+  const k = DATA.katun; const ku = DATA.kusuma; const p = DATA.pouring;
+  const body = document.getElementById('summaryBody');
+  let rows = '';
+  for(let i=0;i<14;i++){
+    const kOut = k.total_output[i]; const kTgt = TARGET*2;
+    const kAch = kOut>0?((kOut/kTgt)*100).toFixed(1):'--';
+    const kuOut = ku.total_output[i]; const kuTgt = TARGET*2;
+    const kuAch = kuOut>0?((kuOut/kuTgt)*100).toFixed(1):'--';
+    const achColor = (v) => {
+      if(v==='--') return 'var(--white2)';
+      return parseFloat(v)>=95?'var(--green)':parseFloat(v)>=80?'var(--yellow)':'var(--red)';
+    };
+    rows += `<tr>
+      <td style="color:var(--cyan);font-weight:700;font-family:'Rajdhani',sans-serif">${i+1}</td>
+      <td>${kOut?kOut.toLocaleString():'-'}</td>
+      <td>${Math.round(kTgt).toLocaleString()}</td>
+      <td style="color:${achColor(kAch)};font-weight:700">${kAch}%</td>
+      <td>${k.mh_actual[i]||'-'}</td>
+      <td style="color:${k.absensi[i]>0?'var(--red)':'var(--green)'}">${k.absensi[i]||0}</td>
+      <td>${kuOut?kuOut.toLocaleString():'-'}</td>
+      <td>${Math.round(kuTgt).toLocaleString()}</td>
+      <td style="color:${achColor(kuAch)};font-weight:700">${kuAch}%</td>
+      <td>${ku.mh_actual[i]||'-'}</td>
+      <td style="color:${ku.absensi[i]>0?'var(--red)':'var(--green)'}">${ku.absensi[i]||0}</td>
+      <td style="color:${p.wip_total[i]>WIP_MAX?'var(--red)':'var(--green)'}">${p.wip_total[i]?p.wip_total[i].toLocaleString():'-'}</td>
+    </tr>`;
+  }
+  body.innerHTML = rows;
+}
+
+// ─── ACTIONS ───────────────────────────────────────────────────────
+function refreshData() {
+  showNotif('🔄 Refresh', 'Data sedang diperbarui dari sumber...');
+  setTimeout(()=>{ buildKPIs(); buildCharts(); showNotif('✅ Berhasil','Data berhasil diperbarui!'); },800);
+}
+
+function exportPDF() {
+  showNotif('📄 Export PDF','Fitur export membutuhkan koneksi Supabase. Silakan deploy ke server terlebih dahulu.');
+}
+
+function toggleFullscreen() {
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+
+function showNotif(title, msg) {
+  const n = document.getElementById('notif');
+  document.getElementById('notifTitle').textContent = title;
+  document.getElementById('notifMsg').textContent = msg;
+  n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),3500);
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  buildKPIs();
+  setTimeout(buildCharts, 100);
+});
+
+window.addEventListener('resize', () => {
+  clearTimeout(window._resizeTimer);
+  window._resizeTimer = setTimeout(buildCharts, 200);
+});
+
+// Auto refresh every 5 minutes
+setInterval(()=>{ buildKPIs(); buildCharts(); }, 300000);
+</script>
+</body>
+</html>
 
 <!DOCTYPE html>
 <html lang="id">
