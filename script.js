@@ -1,6 +1,6 @@
 async function loadCSV() {
 
-    const response = await fetch('./data/template_produksi_mei2026.csv');
+    const response = await fetch('./template_produksi_mei2026.csv');
 
     const csvText = await response.text();
 
@@ -9,6 +9,7 @@ async function loadCSV() {
 }
 
 loadCSV();
+
 function createChart() {
 
     const ctx = document.getElementById('productionChart');
