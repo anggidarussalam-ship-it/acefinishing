@@ -322,8 +322,7 @@
   .status-item { display:flex; align-items:center; gap:8px; }
   .status-dot { width:6px;height:6px;border-radius:50%; }
 
-  /* recharts tooltip */
-  .recharts-tooltip-wrapper { z-index:999!important; }
+  
 
   /* Notification */
   .notif {
@@ -827,9 +826,8 @@ function buildKPIs() {
   `).join('');
 }
 
-// ─── CHART RENDERING (pure SVG-based via Recharts CDN-less fallback) ─
-// We'll use canvas-based charts since recharts CDN may not load properly
-function drawBarChart(canvasId, labels, datasets, opts={}) {
+
+
   const container = document.getElementById(canvasId);
   if(!container) return;
   const W = container.clientWidth || 500;
@@ -910,7 +908,7 @@ function drawBarChart(canvasId, labels, datasets, opts={}) {
   container.appendChild(svg);
 }
 
-function drawLineChart(canvasId, labels, datasets, opts={}) {
+
   const container = document.getElementById(canvasId);
   if(!container) return;
   const W = container.clientWidth || 500;
@@ -1014,13 +1012,13 @@ function buildCharts() {
   document.getElementById('kusumaAch').style.color = (kuTotal/kuTarget)>=0.95?'var(--green)':'var(--red)';
 
   // 1A — Katun Output
-  drawBarChart('chartKatunOutput', lbls,
+ 
     [{data:k.total_output,color:'rgba(26,108,245,0.8)',label:'Actual'},
      {data:k.finish_good,color:'rgba(0,230,118,0.75)',label:'FG'}],
     {targetLine:TARGET});
 
   // 1B — Kusuma Output
-  drawBarChart('chartKusumaOutput', lbls,
+  
     [{data:ku.total_output,color:'rgba(0,212,255,0.8)',label:'Actual'},
      {data:ku.finish_good,color:'rgba(0,230,118,0.75)',label:'FG'}],
     {targetLine:TARGET});
@@ -1029,7 +1027,7 @@ function buildCharts() {
   const katunProd = k.mh_actual.map((mh,i)=> mh>0&&k.total_output[i]>0 ? +(k.total_output[i]/mh).toFixed(2) : 0);
   const kpAvg = avg(katunProd);
   document.getElementById('katunProdAvg').textContent = kpAvg.toFixed(1);
-  drawLineChart('chartKatunProd', lbls,
+ 
     [{data:katunProd,color:'var(--green)',fill:true},
      {data:Array(31).fill(60),color:'rgba(255,193,7,0.6)',dash:true}],
     {minZero:true});
@@ -1038,7 +1036,7 @@ function buildCharts() {
   const kusumaProd = ku.mh_actual.map((mh,i)=> mh>0&&ku.total_output[i]>0 ? +(ku.total_output[i]/mh).toFixed(2) : 0);
   const kupAvg = avg(kusumaProd);
   document.getElementById('kusumaProdAvg').textContent = kupAvg.toFixed(1);
-  drawLineChart('chartKusumaProd', lbls,
+ 
     [{data:kusumaProd,color:'var(--cyan)',fill:true},
      {data:Array(31).fill(60),color:'rgba(255,193,7,0.6)',dash:true}],
     {minZero:true});
@@ -1046,7 +1044,7 @@ function buildCharts() {
   // 3A — Gentani Katun
   const kgAvg = avg(k.total_gentani.filter(x=>x>0));
   document.getElementById('katunGentaniAvg').textContent = kgAvg.toFixed(1);
-  drawLineChart('chartKatunGentani', lbls,
+  
     [{data:k.total_gentani,color:'var(--yellow)',fill:true},
      {data:k.target_gentani,color:'rgba(255,61,87,0.5)',dash:true}],
     {minZero:true});
@@ -1054,7 +1052,7 @@ function buildCharts() {
   // 3B — Gentani Kusuma
   const kugAvg = avg(ku.total_gentani.filter(x=>x>0));
   document.getElementById('kusumaGentaniAvg').textContent = kugAvg.toFixed(1);
-  drawLineChart('chartKusumaGentani', lbls,
+  
     [{data:ku.total_gentani,color:'var(--yellow2)',fill:true},
      {data:ku.target_gentani,color:'rgba(255,61,87,0.5)',dash:true}],
     {minZero:true});
@@ -1063,7 +1061,7 @@ function buildCharts() {
   const ktPlanMhSum = k.plan_mh.filter(x=>x>0).reduce((s,v)=>s+v,0);
   const ktActMhSum = k.mh_actual.filter(x=>x>0).reduce((s,v)=>s+v,0);
   document.getElementById('katunMhEff').textContent = ktPlanMhSum>0?((ktActMhSum/ktPlanMhSum)*100).toFixed(1)+'%':'--';
-  drawBarChart('chartKatunMH', lbls,
+  
     [{data:k.plan_mh,color:'rgba(26,108,245,0.7)'},
      {data:k.mh_actual,color:'rgba(0,212,255,0.7)'},
      {data:k.mh_process,color:'rgba(0,230,118,0.65)'}],{});
@@ -1072,7 +1070,7 @@ function buildCharts() {
   const kuPlanMhSum = ku.plan_mh.filter(x=>x>0).reduce((s,v)=>s+v,0);
   const kuActMhSum = ku.mh_actual.filter(x=>x>0).reduce((s,v)=>s+v,0);
   document.getElementById('kusumaMhEff').textContent = kuPlanMhSum>0?((kuActMhSum/kuPlanMhSum)*100).toFixed(1)+'%':'--';
-  drawBarChart('chartKusumaMH', lbls,
+ 
     [{data:ku.plan_mh,color:'rgba(26,108,245,0.7)'},
      {data:ku.mh_actual,color:'rgba(0,212,255,0.7)'},
      {data:ku.mh_process,color:'rgba(0,230,118,0.65)'}],{});
@@ -1080,13 +1078,13 @@ function buildCharts() {
   // 5A — Loss Katun
   const ktLossTotal = k.loss_pcs.reduce((s,v)=>s+v,0);
   document.getElementById('katunTotalLoss').textContent = Math.round(ktLossTotal).toLocaleString();
-  drawBarChart('chartKatunLoss', lbls,
+
     [{data:k.loss_pcs,color:'rgba(255,61,87,0.8)'}],{});
 
   // 5B — Loss Kusuma
   const kuLossTotal = ku.loss_pcs.reduce((s,v)=>s+v,0);
   document.getElementById('kusumaTotalLoss').textContent = Math.round(kuLossTotal).toLocaleString();
-  drawBarChart('chartKusumaLoss', lbls,
+  
     [{data:ku.loss_pcs,color:'rgba(255,23,68,0.8)'}],{});
 
   // 6A — Pouring vs Finishing
@@ -1095,14 +1093,14 @@ function buildCharts() {
   const pourTotal = p.output_pouring.reduce((s,v)=>s+v,0);
   const finTotal = p.output_finishing.reduce((s,v)=>s+v,0);
   document.getElementById('pourVarPct').textContent = pourTotal>0?((Math.abs(pourTotal-finTotal)/pourTotal)*100).toFixed(1)+'%':'--';
-  drawBarChart('chartPouringFinishing', lbls,
+  
     [{data:p.output_pouring,color:'rgba(168,85,247,0.8)'},
      {data:p.output_finishing,color:'rgba(0,212,255,0.75)'}],{});
 
   // 6B — WIP
   const latestWip = p.wip_total.filter(x=>x>0).slice(-1)[0]||0;
   document.getElementById('latestWIP').textContent = latestWip.toLocaleString();
-  drawLineChart('chartWIP', lbls,
+  
     [{data:p.wip_total,color:'var(--yellow)',fill:true},
      {data:Array(31).fill(WIP_MAX),color:'rgba(255,61,87,0.5)',dash:true}],
     {minZero:true});
@@ -1112,7 +1110,7 @@ function buildCharts() {
   const ktNGRate = k.total_output.map((v,i)=>v>0&&ktNGVals[i]>0?(ktNGVals[i]/v*100).toFixed(2):0).map(Number);
   const ktNGAvg = avg(ktNGRate.filter(x=>x>0));
   document.getElementById('katunNGRate').textContent = ktNGAvg.toFixed(2)+'%';
-  drawBarChart('chartKatunNG', lbls,
+  
     [{data:ktNGVals,color:'rgba(255,61,87,0.8)'}],{});
 
   // 7B — NG Kusuma
@@ -1120,7 +1118,7 @@ function buildCharts() {
   const kuNGRate = ku.total_output.map((v,i)=>v>0&&kuNGVals[i]>0?(kuNGVals[i]/v*100).toFixed(2):0).map(Number);
   const kuNGAvg = avg(kuNGRate.filter(x=>x>0));
   document.getElementById('kusumaNGRate').textContent = kuNGAvg.toFixed(2)+'%';
-  drawBarChart('chartKusumaNG', lbls,
+ 
     [{data:kuNGVals,color:'rgba(255,23,68,0.8)'}],{});
 
   buildSummaryTable();
